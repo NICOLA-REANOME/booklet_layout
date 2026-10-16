@@ -1,0 +1,12 @@
+{
+  "name": "bookflow-studio",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Browser-based book layout and booklet imposition tool",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/engine.mjs && node --check src/app.mjs && npm test"
+  },
+  "engines": { "node": ">=20" }
+}
