@@ -40,7 +40,7 @@ Page numbers are local to each signature and then mapped to reader-order indices
 
 - **Epson EcoTank ET-4850 — color interior pages / general jobs:** Epson documents automatic duplex. On the US support guidance, automatic duplex is available for plain paper in A4 or Letter; photo/glossy media is not duplex-compatible. Use the appropriate paper type and test one sheet.
 - **Epson L8050 — color covers and photo pages:** published specifications do not list automatic two-sided printing. Use the manual-duplex fronts/backs workflow for suitable media, or print the cover as a separate single-sided job.
-- **HP LaserJet Pro 400 family — black book interiors:** a good use case for monochrome text, but the family has several models with different features. Confirm the exact model suffix and installed driver before relying on automatic duplex.
+- **HP LaserJet Pro 400 family — black book interiors:** the app now asks for the exact model for the M401 variants. HP's M401-series documentation lists the M401n as manual duplex, while M401dn/M401dw list automatic duplex. If your printer is another 400-series model, leave the profile on manual duplex until the exact driver/model is confirmed.
 
 Official references:
 - Epson ET-4850 double-sided settings: https://epson.com/faq/SPT_C11CJ60202~faq-0000802-et4850
