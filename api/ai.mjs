@@ -196,13 +196,14 @@ async function generateImage(body) {
  }
  if(provider==="openrouter"){
   const info=providerInfo("openrouter");if(!info.key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
-  const model=String(body.model||"").trim();if(!model)throw Object.assign(new Error("Choose an OpenRouter model that supports image output."),{status:400});
-  const result=await requestJSON(info.chat,{method:"POST",headers:headersFor("openrouter",info.key),body:JSON.stringify({model,messages:[{role:"user",content:prompt+"\nGenerate the image in a "+ratio+" aspect ratio."}],modalities:["text","image"],max_tokens:1500})},120000);
-  const m=result?.choices?.[0]?.message||{},images=[];
-  for(const im of (m.images||[])){const u=im?.image_url?.url||im?.url||null;if(u)images.push({url:u,b64:null});}
-  if(!images.length&&Array.isArray(result.data)) for(const im of result.data){if(im.url||im.b64_json)images.push({url:im.url||null,b64:im.b64_json||null});}
-  if(!images.length) throw Object.assign(new Error("No image was returned. Check that this OpenRouter model supports image output, or use Agnes Image 2.5."),{status:502});
-  return {ok:true,provider,model,images,reply:typeof m.content==="string"?m.content:""};
+  const model=String(body.model||"").trim();if(!model)throw Object.assign(new Error("Choose an OpenRouter image model from Load models."),{status:400});
+  const refs=Array.isArray(body.referenceImages)?body.referenceImages.filter(x=>typeof x==="string"&&(/^https:\/\/|^data:image\/(?:png|jpeg|webp);base64,/i.test(x))).slice(0,4):[];
+  const payload={model,prompt,aspect_ratio:ratio,resolution:size,n:1};
+  if(refs.length)payload.input_references=refs.map(url=>({type:"image_url",image_url:{url}}));
+  const result=await requestJSON(OPENROUTER_BASE+"/images",{method:"POST",headers:headersFor("openrouter",info.key),body:JSON.stringify(payload)},150000);
+  const images=(Array.isArray(result.data)?result.data:[]).map(x=>({url:x.url||null,b64:x.b64_json||null,mediaType:x.media_type||"image/png",revisedPrompt:x.revised_prompt||null})).filter(x=>x.url||x.b64);
+  if(!images.length)throw Object.assign(new Error("OpenRouter returned no image bytes. Check model support, required parameters and available credits."),{status:502});
+  return {ok:true,provider,model,images,usage:result.usage||null};
  }
  throw Object.assign(new Error("Image generation is available through Agnes, or OpenRouter models that explicitly support image output."),{status:400});
 }
