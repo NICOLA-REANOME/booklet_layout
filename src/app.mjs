@@ -56,3 +56,205 @@ for(const id of ids)$(id).addEventListener('change',()=>{if(id==='pagePreset'&&P
 window.addEventListener('resize',renderReader);window.addEventListener('beforeunload',()=>{sync();store();});
 function boot(){try{let d=JSON.parse(localStorage.getItem(KEY)||'{}');if(Array.isArray(d.projects))projects=d.projects;activeId=d.activeId||'';}catch{}if(!projects.length){let p=def();p.title='My Book';projects=[p];activeId=p.id;}if(!projects.some(p=>p.id===activeId))activeId=projects[0].id;loadActive();}
 boot();
+
+
+// Saved layout presets: built-ins keep printer, trim size, typography and imposition settings together.
+const BUILTIN_PRESETS = {
+ "paperback-a5":{label:"A5 Paperback",pagePreset:"A5",pageW:148,pageH:210,orientation:"portrait",fontSize:11,columns:1,lineSpacing:1.4,align:"justify",topMargin:18,bottomMargin:18,innerMargin:20,outerMargin:14,gutter:5,pageNumbers:true,chapterStart:true,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:32,fit:"fit"},
+ "pocket-a6":{label:"A6 Pocket Book",pagePreset:"A6",pageW:105,pageH:148,orientation:"portrait",fontSize:9.5,columns:1,lineSpacing:1.25,align:"justify",topMargin:12,bottomMargin:12,innerMargin:14,outerMargin:10,gutter:3,pageNumbers:true,chapterStart:true,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:32,fit:"fit"},
+ "textbook-b5":{label:"B5 Textbook · 2 columns",pagePreset:"B5",pageW:176,pageH:250,orientation:"portrait",fontSize:10.5,columns:2,lineSpacing:1.3,align:"justify",topMargin:16,bottomMargin:16,innerMargin:18,outerMargin:13,gutter:4,pageNumbers:true,chapterStart:true,sheetPreset:"A3",sheetW:420,sheetH:297,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:16,fit:"fit"},
+ "workbook-a4":{label:"A4 Colour Workbook",pagePreset:"A4",pageW:210,pageH:297,orientation:"portrait",fontSize:11,columns:1,lineSpacing:1.45,align:"left",topMargin:18,bottomMargin:18,innerMargin:16,outerMargin:16,gutter:3,pageNumbers:true,chapterStart:true,sheetPreset:"A3",sheetW:420,sheetH:297,sheetOrientation:"landscape",printer:"et4850",mode:"auto",signature:16,fit:"fit"},
+ "bw-a5":{label:"A5 Black & White Interior",pagePreset:"A5",pageW:148,pageH:210,orientation:"portrait",fontSize:10.5,columns:1,lineSpacing:1.35,align:"justify",topMargin:17,bottomMargin:17,innerMargin:20,outerMargin:13,gutter:6,pageNumbers:true,chapterStart:true,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:32,fit:"fit"},
+ "cover-l8050":{label:"Cover / Photo Job · L8050",pagePreset:"A5",pageW:148,pageH:210,orientation:"portrait",fontSize:12,columns:1,lineSpacing:1.4,align:"center",topMargin:8,bottomMargin:8,innerMargin:8,outerMargin:8,gutter:0,pageNumbers:false,chapterStart:false,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"l8050",mode:"simplex",signature:4,fit:"fit"}
+};
+const CUSTOM_PRESET_KEY=KEY+'-named-presets';
+const SETTING_TO_ELEMENT={pagePreset:'pagePreset',pageW:'pageW',pageH:'pageH',orientation:'orientation',fontSize:'fontSize',columns:'columns',lineSpacing:'lineSpacing',align:'align',topMargin:'topMargin',bottomMargin:'bottomMargin',innerMargin:'innerMargin',outerMargin:'outerMargin',gutter:'gutter',pageNumbers:'pageNumbers',chapterStart:'chapterStart',sheetPreset:'sheetPreset',sheetW:'sheetW',sheetH:'sheetH',sheetOrientation:'sheetOrientation',printer:'printer',hpModel:'hpModel',mode:'mode',signature:'signature',fit:'fit',customScale:'customScale',flip:'flip',backOrder:'backOrder',marks:'marks'};
+function readCustomPresets(){try{const o=JSON.parse(localStorage.getItem(CUSTOM_PRESET_KEY)||'{}');return o&&typeof o==='object'?o:{};}catch{return {};}}
+function renderCustomPresets(){
+ const sel=$('customPresetSelect');if(!sel)return;const saved=readCustomPresets(),values=Object.entries(saved);
+ sel.replaceChildren();
+ if(!values.length){const o=document.createElement('option');o.value='';o.textContent='No custom layouts saved yet';sel.append(o);sel.disabled=true;return;}
+ sel.disabled=false;const place=document.createElement('option');place.value='';place.textContent='Choose a saved layout…';sel.append(place);
+ for(const [id,p] of values){const o=document.createElement('option');o.value=id;o.textContent=p.label||id;sel.append(o);}
+}
+function applySettingsObject(p,label){
+ if(!p||typeof p!=='object')return;
+ for(const [key,id] of Object.entries(SETTING_TO_ELEMENT)){if(!(key in p))continue;const el=$(id);if(!el)continue;if(el.type==='checkbox')el.checked=!!p[key];else if(p[key]!==undefined&&p[key]!==null)el.value=String(p[key]);}
+ if(p.pagePreset&&PAPER_MM[p.pagePreset]&&(!p.pageW||!p.pageH)){const [w,h]=PAPER_MM[p.pagePreset];$('pageW').value=w;$('pageH').value=h;}
+ if(p.sheetPreset&&PAPER_MM[p.sheetPreset]&&(!p.sheetW||!p.sheetH)){const [w,h]=PAPER_MM[p.sheetPreset];$('sheetW').value=Math.max(w,h);$('sheetH').value=Math.min(w,h);}
+ pageIndex=0;refresh();$('presetInfo').textContent=(label||p.label||'Layout')+' applied. Book text has not been changed.';
+}
+$('presetApply')?.addEventListener('click',()=>{
+ const id=$('presetSelect').value,p=BUILTIN_PRESETS[id];if(!p)return;
+ applySettingsObject(p,p.label);
+ $('presetInfo').textContent='Applied '+p.label+'. You can now fine-tune any setting below; manuscript text remains unchanged.';
+});
+$('presetSave')?.addEventListener('click',()=>{
+ const label=$('presetName').value.trim();if(!label){alert('Enter a name for this layout first.');$('presetName').focus();return;}
+ const saved=readCustomPresets(),id='custom-'+label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50)+'-'+Date.now().toString(36);
+ saved[id]={label,settings:fromUI(),savedAt:new Date().toISOString()};
+ try{localStorage.setItem(CUSTOM_PRESET_KEY,JSON.stringify(saved));renderCustomPresets();$('customPresetSelect').value=id;$('presetInfo').textContent='Saved “'+label+'” to this browser. It can be reused for future book projects.';status('Named layout preset saved locally.','good');}
+ catch(e){alert('Could not save this preset in browser storage. Export a project backup or remove old presets.');}
+});
+$('customPresetSelect')?.addEventListener('change',()=>{
+ const id=$('customPresetSelect').value;if(!id)return;const p=readCustomPresets()[id];if(!p)return;
+ applySettingsObject(p.settings||p,p.label||'Custom layout');
+});
+$('presetSelect')?.addEventListener('change',()=>{
+ const p=BUILTIN_PRESETS[$('presetSelect').value];if(p&&$('presetInfo'))$('presetInfo').textContent=p.label+' · '+p.pageW+'×'+p.pageH+' mm finished pages · '+p.columns+' column(s) · '+p.printer.toUpperCase()+' print profile.';
+});
+renderCustomPresets();
+document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.workflow .step').forEach(x=>x.classList.toggle('on',x===b));
+ const target=$(b.dataset.jump);if(target){target.scrollIntoView({behavior:'smooth',block:'start'});if(b.dataset.jump==='aiStudio')document.querySelector('.ai-panel')?.classList.add('jump-focus');}
+}));
+
+// AI connections use server-only Vercel variables; keys never live in this browser or the repository.
+let aiHistory=[],attachedVisionData='',attachedVisionName='',attachedReferenceData='',lastVideoModel='agnes-video-2.5-flash';
+function escapeText(s){return String(s??'');}
+function renderAIStatus(data){
+ const p=data?.providers||{};
+ const ag=!!p.agnes?.configured,or=!!p.openrouter?.configured;
+ $('agnesDot').className='provider-dot '+(ag?'ok':'bad');$('agnesStatus').textContent='Agnes · '+(ag?'connected':'key needed');
+ $('orDot').className='provider-dot '+(or?'ok':'bad');$('orStatus').textContent='OpenRouter · '+(or?'connected':'key needed');
+ $('setupDetails').textContent='AGNES_API_KEY: '+(ag?'configured':'not configured')+' · OPENROUTER_API_KEY: '+(or?'configured':'not configured')+'. Values are never returned to this page.';
+}
+async function refreshAIStatus(){
+ $('agnesStatus').textContent='Agnes · checking';$('orStatus').textContent='OpenRouter · checking';
+ try{const r=await fetch('/api/ai?action=status',{cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||'Status endpoint unavailable');renderAIStatus(d);}
+ catch(e){$('agnesDot').className='provider-dot bad';$('orDot').className='provider-dot bad';$('agnesStatus').textContent='AI API unavailable';$('orStatus').textContent='Check deployment';$('setupDetails').textContent='The /api/ai status route could not be reached. '+e.message+' If this is a static preview, deploy the Vercel API route too.';}
+}
+function currentBookPayload(){const p=active();return {title:p?.title||$('title').value,author:p?.author||$('author').value,text:String($('manuscript').value||'').slice(0,30000),settings:fromUI()};}
+function updateAIContext(){
+ const p=active(),s=readSettings();if(!$('aiBookContext'))return;
+ $('aiBookContext').textContent=(p?.title||$('title').value||'Untitled book')+'\\n'+wordCount($('manuscript').value)+' words · '+layouts.length+' estimated pages\\n'+(s.pagePreset||'Custom')+' · '+s.pageW+'×'+s.pageH+' mm · '+s.columns+' column(s)\\n'+s.printer+' · '+s.mode+' · '+s.sheetW+'×'+s.sheetH+' mm sheet';
+}
+function addChatMessage(role,text,extraClass=''){
+ const host=$('aiMessages'),welcome=host.querySelector('.welcome');welcome?.remove();
+ const m=document.createElement('div');m.className='chat-message '+(role==='user'?'user':'assistant');
+ const label=document.createElement('span');label.className='chat-role';label.textContent=role==='user'?'You':'BookFlow AI';
+ const body=document.createElement('div');body.textContent=String(text||'');m.append(label,body);
+ if(extraClass)m.dataset.kind=extraClass;
+ host.append(m);host.scrollTop=host.scrollHeight;return m;
+}
+function appendToolCards(runs){
+ const host=$('aiMessages');let suggestion=null;
+ for(const run of (runs||[])){
+  const result=run?.result||{};
+  if(run.name==='suggest_layout_preset'&&result.applyable&&result.settings){
+   suggestion=result;const wrap=document.createElement('div');wrap.className='ai-card apply-suggestion';
+   const title=document.createElement('div');title.className='ai-card-title';title.textContent='Layout preset suggestion';
+   const copy=document.createElement('p');copy.textContent=(result.label||result.presetId)+' — '+(result.reason||'Suggested for this book.');
+   const button=document.createElement('button');button.className='primary wide';button.textContent='Apply '+(result.label||'suggested layout');
+   button.addEventListener('click',()=>{applySettingsObject(result.settings,result.label);button.textContent='Applied ✓';button.disabled=true;});
+   wrap.append(title,copy,button);host.append(wrap);
+   $('aiSuggestionBox').classList.remove('hidden');$('aiSuggestion').textContent=(result.label||result.presetId)+' — '+(result.reason||'Review the preset, then apply it.');
+   const sideButton=document.createElement('button');sideButton.className='primary wide mt';sideButton.textContent='Apply suggested layout';sideButton.onclick=()=>{applySettingsObject(result.settings,result.label);sideButton.textContent='Applied ✓';sideButton.disabled=true;};
+   $('aiSuggestion').append(sideButton);
+  } else if(run.name==='check_print_setup'){
+   const card=document.createElement('div');card.className='ai-card apply-suggestion';
+   const t=document.createElement('div');t.className='ai-card-title';t.textContent='Print geometry check';
+   const p=document.createElement('p');p.textContent='Finished page '+(result.finishedPageMm||[]).join(' × ')+' mm · sheet '+(result.physicalSheetMm||[]).join(' × ')+' mm · calculated scale '+(result.scalePercent??'?')+'%. '+(result.warning||'Review output before printing.');
+   card.append(t,p);host.append(card);
+  } else if(run.name==='get_book_overview'){
+   const card=document.createElement('div');card.className='ai-card apply-suggestion';
+   const t=document.createElement('div');t.className='ai-card-title';t.textContent='Book overview';
+   const p=document.createElement('p');p.textContent=(result.wordCount??'?')+' words · '+((result.headings||[]).length)+' headings'+((result.headings||[]).length?': '+result.headings.slice(0,12).join(' · '):'');
+   card.append(t,p);host.append(card);
+  } else if(run.name==='find_sections'){
+   const card=document.createElement('div');card.className='ai-card apply-suggestion';
+   const t=document.createElement('div');t.className='ai-card-title';t.textContent='Section search';
+   const p=document.createElement('p');p.textContent=(result.matches||[]).length+' matching paragraphs. '+(result.matches||[]).slice(0,4).map(x=>x.text).join(' · ');
+   card.append(t,p);host.append(card);
+  }
+ }
+ host.scrollTop=host.scrollHeight;
+}
+async function sendAIChat(textOverride){
+ const prompt=String(textOverride??$('aiInput').value).trim();if(!prompt)return;
+ const provider=$('aiProvider').value,model=$('aiModel').value.trim()||(provider==='agnes'?'agnes-2.5-flash':'');
+ let userContent=prompt;
+ if(attachedVisionData)userContent=[{type:'text',text:prompt},{type:'image_url',image_url:{url:attachedVisionData,detail:'auto'}}];
+ addChatMessage('user',prompt+(attachedVisionName?'\\n[Attached image: '+attachedVisionName+']':''));
+ aiHistory.push({role:'user',content:userContent});if(aiHistory.length>18)aiHistory=aiHistory.slice(-18);
+ $('aiInput').value='';$('aiSend').disabled=true;$('aiSend').textContent='Thinking…';
+ const pending=addChatMessage('assistant','Checking the book context and working on your request…','pending');
+ try{
+  const response=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'chat',provider,model,messages:aiHistory,book:currentBookPayload(),enableTools:true})});
+  const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error||('Provider error '+response.status));
+  pending.remove();const reply=data.reply||'(The model returned an empty message.)';addChatMessage('assistant',reply);
+  aiHistory.push({role:'assistant',content:reply});if(aiHistory.length>18)aiHistory=aiHistory.slice(-18);
+  appendToolCards(data.toolRuns||[]);
+  const use=$('modelLoadStatus');use.textContent='Provider: '+data.provider+' · model: '+data.model+(data.usage?.total_tokens?' · tokens: '+data.usage.total_tokens:'');
+ }catch(e){pending.remove();addChatMessage('assistant','Request failed: '+e.message+'\\nOpen API setup to check provider keys and model access.');}
+ finally{$('aiSend').disabled=false;$('aiSend').textContent='Ask AI ↗';attachedVisionData='';attachedVisionName='';$('visionFile').value='';$('visionName').textContent='';updateAIContext();}
+}
+$('aiChatForm')?.addEventListener('submit',e=>{e.preventDefault();sendAIChat();});
+document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{const prompt=b.dataset.prompt;$('aiInput').value=prompt;sendAIChat(prompt);}));
+$('visionFile')?.addEventListener('change',async e=>{
+ const file=e.target.files?.[0];if(!file)return;if(file.size>2_500_000){alert('For this AI preview, choose an image below 2.5 MB.');e.target.value='';return;}
+ try{attachedVisionData=await new Promise((resolve,reject)=>{const rd=new FileReader();rd.onload=()=>resolve(String(rd.result));rd.onerror=reject;rd.readAsDataURL(file);});attachedVisionName=file.name;$('visionName').textContent=file.name;}
+ catch(err){alert('Could not read that image.');}
+});
+$('aiProvider')?.addEventListener('change',()=>{
+ const p=$('aiProvider').value;$('aiModel').value=p==='agnes'?'agnes-2.5-flash':'';$('aiModel').placeholder=p==='agnes'?'agnes-2.5-flash':'Choose an OpenRouter model ID';$('modelLoadStatus').textContent=p==='agnes'?'Default: Agnes 2.5 Flash. Load your available model list.':'Enter or load an OpenRouter model ID.';aiHistory=[];
+});
+$('loadModels')?.addEventListener('click',async()=>{
+ const provider=$('aiProvider').value;const button=$('loadModels');button.disabled=true;button.textContent='Loading…';
+ try{const res=await fetch('/api/ai?action=models&provider='+encodeURIComponent(provider)),d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Could not load models');const list=$('aiModelList');list.replaceChildren();for(const m of (d.models||[])){const option=document.createElement('option');option.value=m.id;option.label=m.name;list.append(option);} $('modelLoadStatus').textContent=(d.models||[]).length+' models returned by '+provider+'. Type or select the exact model ID supported by your API key.';}
+ catch(e){$('modelLoadStatus').textContent='Model list could not be loaded: '+e.message;}
+ finally{button.disabled=false;button.textContent='Load models';}
+});
+$('refreshAIStatus')?.addEventListener('click',refreshAIStatus);$('checkKeys')?.addEventListener('click',refreshAIStatus);
+document.querySelectorAll('[data-ai-mode]').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('[data-ai-mode]').forEach(x=>x.classList.toggle('active',x===b));
+ const map={chat:'aiChatPane',image:'aiImagePane',video:'aiVideoPane',embeddings:'aiEmbeddingsPane',setup:'aiSetupPane'};
+ for(const [key,id] of Object.entries(map))$(id).classList.toggle('hidden',key!==b.dataset.aiMode);
+}));
+$('imageProvider')?.addEventListener('change',()=>{
+ const p=$('imageProvider').value;
+ if(p==='agnes')$('imageModel').value='agnes-image-2.5-flash';
+ else $('imageModel').value='';
+});
+$('imageReference')?.addEventListener('change',async e=>{
+ const f=e.target.files?.[0];if(!f)return;if(f.size>2_500_000){alert('Please choose a reference image under 2.5 MB.');e.target.value='';return;}
+ try{attachedReferenceData=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(f);});}
+ catch{alert('Unable to read reference image.');}
+});
+function imageDataSource(im){if(im.b64)return 'data:image/png;base64,'+im.b64;return im.url||'';}
+$('generateImage')?.addEventListener('click',async()=>{
+ const button=$('generateImage'),provider=$('imageProvider').value,prompt=$('imagePrompt').value.trim();if(!prompt){alert('Write an image prompt first.');return;}
+ button.disabled=true;button.textContent='Generating…';$('imageStatus').textContent='Sending image request to '+provider+'…';$('imageResults').replaceChildren();
+ try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'image',provider,model:$('imageModel').value.trim(),prompt,size:$('imageSize').value,ratio:$('imageRatio').value,referenceImages:attachedReferenceData?[attachedReferenceData]:[]})});const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Image request failed');
+ for(const im of (d.images||[])){const card=document.createElement('div');card.className='image-result';const img=document.createElement('img');img.alt='AI-generated image';img.src=imageDataSource(im);const a=document.createElement('a');a.href=img.src;a.target='_blank';a.rel='noreferrer';a.textContent='Open / save image ↗';card.append(img,a);$('imageResults').append(card);}
+ if(!d.images?.length)throw Error('No image output was returned.');$('imageStatus').textContent='Image ready · '+d.provider+' / '+d.model+' · review resolution before printing.';
+ }catch(e){$('imageStatus').textContent='Image generation failed: '+e.message;$('imageResults').textContent='No image was returned.';}
+ finally{button.disabled=false;button.textContent='Generate image';}
+});
+$('createVideo')?.addEventListener('click',async()=>{
+ const button=$('createVideo'),prompt=$('videoPrompt').value.trim();if(!prompt){alert('Write a video prompt first.');return;}
+ button.disabled=true;button.textContent='Submitting…';$('videoStatus').textContent='Submitting asynchronous generation job…';
+ try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'video',model:$('videoModel').value,prompt,seconds:$('videoSeconds').value,size:'720P'})});const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Video request failed');
+ $('videoId').value=d.videoId||'';lastVideoModel=d.model;$('videoStatus').textContent='Job created · status: '+(d.status||'queued')+(d.videoId?' · ID saved above':' · provider did not return a video_id');$('videoResult').textContent=JSON.stringify(d.raw||d,null,2);
+ }catch(e){$('videoStatus').textContent='Video request failed: '+e.message;}
+ finally{button.disabled=false;button.textContent='Start video generation';}
+});
+$('pollVideo')?.addEventListener('click',async()=>{
+ const id=$('videoId').value.trim();if(!id){alert('Create a video job or enter the provider video_id first.');return;}
+ $('pollVideo').disabled=true;$('videoStatus').textContent='Checking job…';
+ try{const model=$('videoModel').value,res=await fetch('/api/ai?action=video-status&video_id='+encodeURIComponent(id)+'&model='+encodeURIComponent(model)),d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Status request failed');
+ const r=d.result||{};$('videoStatus').textContent='Video status: '+(r.status||'provider response received');$('videoResult').replaceChildren();
+ if(r.url&&/^https:\\/\\//i.test(r.url)){const a=document.createElement('a');a.href=r.url;a.target='_blank';a.rel='noreferrer';a.textContent='Open generated video ↗';$('videoResult').append(a);if(/\\.(mp4|webm)(\\?|$)/i.test(r.url)){const v=document.createElement('video');v.src=r.url;v.controls=true;v.style.marginTop='12px';$('videoResult').append(v);}}
+ else {$('videoResult').textContent=JSON.stringify(r,null,2);}
+ }catch(e){$('videoStatus').textContent='Video status check failed: '+e.message;}
+ finally{$('pollVideo').disabled=false;}
+});
+$('testEmbedding')?.addEventListener('click',async()=>{
+ const text=$('embeddingText').value.trim(),model=$('embeddingModel').value.trim();if(!text||!model){alert('Enter an embedding model ID and a short text sample.');return;}
+ $('testEmbedding').disabled=true;$('embeddingStatus').textContent='Calling OpenRouter embeddings…';
+ try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'embeddings',model,input:text})});const d=await res.json();if(!res.ok||!d.data)throw Error(d.error||'Embedding request failed');$('embeddingStatus').textContent='Success · '+d.data.length+' embedding(s) · vector size '+(d.data[0]?.embedding?.length||'unknown')+' · tokens '+(d.usage?.total_tokens??'unknown')+'.';}
+ catch(e){$('embeddingStatus').textContent='Embedding test failed: '+e.message;}
+ finally{$('testEmbedding').disabled=false;}
+});
+refreshAIStatus();updateAIContext();
+
