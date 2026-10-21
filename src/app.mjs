@@ -244,7 +244,7 @@ $('pollVideo')?.addEventListener('click',async()=>{
  $('pollVideo').disabled=true;$('videoStatus').textContent='Checking job…';
  try{const model=$('videoModel').value,res=await fetch('/api/ai?action=video-status&video_id='+encodeURIComponent(id)+'&model='+encodeURIComponent(model)),d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Status request failed');
  const r=d.result||{};$('videoStatus').textContent='Video status: '+(r.status||'provider response received');$('videoResult').replaceChildren();
- if(r.url&&/^https:\\/\\//i.test(r.url)){const a=document.createElement('a');a.href=r.url;a.target='_blank';a.rel='noreferrer';a.textContent='Open generated video ↗';$('videoResult').append(a);if(/\\.(mp4|webm)(\\?|$)/i.test(r.url)){const v=document.createElement('video');v.src=r.url;v.controls=true;v.style.marginTop='12px';$('videoResult').append(v);}}
+ if(typeof r.url==="string"&&r.url.startsWith("https://")){const a=document.createElement("a");a.href=r.url;a.target="_blank";a.rel="noreferrer";a.textContent="Open generated video ↗";$("videoResult").append(a);const lowerUrl=r.url.toLowerCase();if(lowerUrl.includes(".mp4")||lowerUrl.includes(".webm")){const v=document.createElement("video");v.src=r.url;v.controls=true;v.style.marginTop="12px";$("videoResult").append(v);}}
  else {$('videoResult').textContent=JSON.stringify(r,null,2);}
  }catch(e){$('videoStatus').textContent='Video status check failed: '+e.message;}
  finally{$('pollVideo').disabled=false;}
