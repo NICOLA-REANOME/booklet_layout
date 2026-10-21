@@ -6,7 +6,7 @@
   "description": "Browser-based book layout and booklet imposition tool",
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/engine.mjs && node --check src/app.mjs && npm test"
+    "check": "node --check src/engine.mjs && node --check src/app.mjs && node --check api/ai.mjs && npm test"
   },
   "engines": { "node": ">=20" }
 }
