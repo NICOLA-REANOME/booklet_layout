@@ -9,7 +9,7 @@ const PRESETS = {
   "paperback-a5": { label:"A5 Paperback", pagePreset:"A5",pageW:148,pageH:210,orientation:"portrait",fontSize:11,columns:1,lineSpacing:1.4,align:"justify",topMargin:18,bottomMargin:18,innerMargin:20,outerMargin:14,gutter:5,pageNumbers:true,chapterStart:true,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:32,fit:"fit" },
   "pocket-a6": { label:"A6 Pocket Book",pagePreset:"A6",pageW:105,pageH:148,orientation:"portrait",fontSize:9.5,columns:1,lineSpacing:1.25,align:"justify",topMargin:12,bottomMargin:12,innerMargin:14,outerMargin:10,gutter:3,pageNumbers:true,chapterStart:true,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:32,fit:"fit" },
   "textbook-b5": { label:"B5 Textbook · 2 columns",pagePreset:"B5",pageW:176,pageH:250,orientation:"portrait",fontSize:10.5,columns:2,lineSpacing:1.3,align:"justify",topMargin:16,bottomMargin:16,innerMargin:18,outerMargin:13,gutter:4,pageNumbers:true,chapterStart:true,sheetPreset:"A3",sheetW:420,sheetH:297,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:16,fit:"fit" },
-  "workbook-a4": { label:"A4 Colour Workbook",pagePreset:"A4",pageW:210,pageH:297,orientation:"portrait",fontSize:11,columns:1,lineSpacing:1.45,align:"left",topMargin:18,bottomMargin:18,innerMargin:16,outerMargin:16,gutter:3,pageNumbers:true,chapterStart:true,sheetPreset:"A3",sheetW:420,sheetH:297,sheetOrientation:"landscape",printer:"et4850",mode:"auto",signature:16,fit:"fit" },
+  "workbook-a4": { label:"A4 Colour Workbook · normal print",pagePreset:"A4",pageW:210,pageH:297,orientation:"portrait",fontSize:11,columns:1,lineSpacing:1.45,align:"left",topMargin:18,bottomMargin:18,innerMargin:16,outerMargin:16,gutter:3,pageNumbers:true,chapterStart:true,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"et4850",mode:"normal",signature:16,fit:"actual" },
   "bw-a5": { label:"A5 Black & White Interior",pagePreset:"A5",pageW:148,pageH:210,orientation:"portrait",fontSize:10.5,columns:1,lineSpacing:1.35,align:"justify",topMargin:17,bottomMargin:17,innerMargin:20,outerMargin:13,gutter:6,pageNumbers:true,chapterStart:true,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"hp400",mode:"manual",signature:32,fit:"fit" },
   "cover-l8050": { label:"Cover / Photo Job · L8050",pagePreset:"A5",pageW:148,pageH:210,orientation:"portrait",fontSize:12,columns:1,lineSpacing:1.4,align:"center",topMargin:8,bottomMargin:8,innerMargin:8,outerMargin:8,gutter:0,pageNumbers:false,chapterStart:false,sheetPreset:"A4",sheetW:297,sheetH:210,sheetOrientation:"landscape",printer:"l8050",mode:"simplex",signature:4,fit:"fit" }
 };
@@ -31,7 +31,7 @@ function safeOrigin(req) {
   if (APP_ORIGINS.has(origin)) return true;
   if (process.env.BOOKFLOW_APP_ORIGIN && origin === process.env.BOOKFLOW_APP_ORIGIN) return true;
   // Permit localhost only for local development; never as a production wildcard.
-  return process.env.NODE_ENV !== "production" && /^http:\/\/localhost:\d+$/.test(origin);
+  return !process.env.VERCEL && process.env.NODE_ENV !== "production" && /^http:\/\/localhost:\d+$/.test(origin);
 }
 function readBody(req) {
   let body = req.body;
@@ -92,8 +92,10 @@ function printReport(book){
  const landscape=s.sheetOrientation!=="portrait";
  const sw=landscape?Math.max(sheetW,sheetH):Math.min(sheetW,sheetH), sh=landscape?Math.min(sheetW,sheetH):Math.max(sheetW,sheetH);
  const pW=s.orientation==="landscape"?Math.max(pageW,pageH):Math.min(pageW,pageH),pH=s.orientation==="landscape"?Math.min(pageW,pageH):Math.max(pageW,pageH);
- const scale=Math.min(1,sw/(2*pW),sh/pH), words=wordCount(book.text),lines=String(book.text).split(/\r?\n/).filter(Boolean).length;
- return {finishedPageMm:[pW,pH],physicalSheetMm:[sw,sh],requiredTwoUpMm:[2*pW,pH],fit:2*pW<=sw+0.2&&pH<=sh+0.2,scalePercent:Math.round(scale*10000)/100,needsScaling:scale<0.999,booklet:true,innerMarginMm:s.innerMargin||0,gutterMm:s.gutter||0,words,approxLines:lines,warning:scale<.999?"This page size needs proportional scaling to fit the selected physical sheet.":"The two-up geometry fits the selected physical sheet."};
+ const booklet=s.mode!=="normal", requiredWidth=booklet?2*pW:pW, fit=s.fit||"fit";
+ let scale=fit==="actual"?1:fit==="custom"?Math.max(0.1,Math.min(2,(Number(s.customScale)||100)/100)):Math.min(1,sw/requiredWidth,sh/pH);
+ const fits=requiredWidth*scale<=sw+0.2&&pH*scale<=sh+0.2, words=wordCount(book.text),lines=String(book.text).split(/\r?\n/).filter(Boolean).length;
+ return {finishedPageMm:[pW,pH],physicalSheetMm:[sw,sh],requiredSpreadMm:[requiredWidth,pH],fit:fits,scalePercent:Math.round(scale*10000)/100,needsScaling:scale<0.999,booklet,innerMarginMm:s.innerMargin||0,gutterMm:s.gutter||0,words,approxLines:lines,warning:!fits?"This setup does not fit the selected physical sheet at the chosen scale.":scale<0.999?"This page size needs proportional scaling to fit the selected physical sheet.":booklet?"The two-up geometry fits the selected physical sheet.":"Normal reader-order page size fits the selected physical sheet."};
 }
 function presetAdvice(presetId,reason){
  const p=PRESETS[presetId]; if(!p)return {error:"Unknown preset"};
