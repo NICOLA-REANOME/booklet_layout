@@ -46,7 +46,12 @@ Default documented model IDs in this integration are agnes-2.5-flash for text/vi
 **OpenRouter endpoints implemented**
 - Model discovery: GET https://openrouter.ai/api/v1/models
 - Chat/tool calling/vision: POST /api/v1/chat/completions
-- Image output via chat models that support modalities: ["text","image"]
+- Image model catalog: GET /api/v1/images/models
+- Dedicated image generation/editing: POST /api/v1/images (base64 response; optional input_references)
+- Legacy image output through chat models that support modalities: ["text","image"] remains available in chat requests where the model supports it
+- Video model catalog: GET /api/v1/videos/models
+- Async video generation: POST /api/v1/videos; poll GET /api/v1/videos/:jobId
+- Text embeddings model catalog: GET /api/v1/embeddings/models
 - Text embeddings: POST /api/v1/embeddings
 
 OpenRouter requests use the official application-identification headers:
@@ -104,6 +109,9 @@ For all printers, use the app's duplex test sheet before printing an entire book
 - Agnes AI model catalog: https://github.com/AgnesAI-Labs/AgnesAI-Models
 - Agnes AI developer docs: https://agnes-ai.com/doc/overview
 - OpenRouter chat completions: https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion
+- OpenRouter video generation: https://openrouter.ai/docs/api/api-reference/video-generation/create-videos
+- OpenRouter video model catalogue: https://openrouter.ai/collections/video-models/
+- OpenRouter image generation: https://openrouter.ai/docs/guides/overview/multimodal/image-generation
 - OpenRouter video generation: https://openrouter.ai/docs/api/api-reference/video-generation/create-videos
 - OpenRouter video model catalogue: https://openrouter.ai/collections/video-models/
 - OpenRouter embeddings: https://openrouter.ai/docs/api/api-reference/embeddings/create-embeddings
