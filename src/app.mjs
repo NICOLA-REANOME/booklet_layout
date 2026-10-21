@@ -243,9 +243,9 @@ $('imageReference')?.addEventListener('change',async e=>{
  try{attachedReferenceData=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(f);});}
  catch{alert('Unable to read reference image.');}
 });
-function imageDataSource(im){if(im.b64)return 'data:image/png;base64,'+im.b64;return im.url||'';}
+function imageDataSource(im){if(im.b64)return 'data:'+(im.mediaType||'image/png')+';base64,'+im.b64;return im.url||'';}
 $('generateImage')?.addEventListener('click',async()=>{
- const button=$('generateImage'),provider=$('imageProvider').value,prompt=$('imagePrompt').value.trim();if(!prompt){alert('Write an image prompt first.');return;}
+ const button=$('generateImage'),provider=$('imageProvider').value,prompt=$('imagePrompt').value.trim();if(!prompt){alert('Write an image prompt first.');return;}if(provider==='openrouter'&&$('imageSize').value==='3K'){$('imageStatus').textContent='OpenRouter image models commonly expose 512, 1K, 2K and 4K tiers; this request will use 2K instead of unsupported 3K.';}
  button.disabled=true;button.textContent='Generating…';$('imageStatus').textContent='Sending image request to '+provider+'…';$('imageResults').replaceChildren();
  try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'image',provider,model:$('imageModel').value.trim(),prompt,size:$('imageSize').value,ratio:$('imageRatio').value,referenceImages:attachedReferenceData?[attachedReferenceData]:[]})});const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Image request failed');
  for(const im of (d.images||[])){const card=document.createElement('div');card.className='image-result';const img=document.createElement('img');img.alt='AI-generated image';img.src=imageDataSource(im);const a=document.createElement('a');a.href=img.src;a.target='_blank';a.rel='noreferrer';a.textContent='Open / save image ↗';card.append(img,a);$('imageResults').append(card);}
