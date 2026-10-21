@@ -207,23 +207,50 @@ async function generateImage(body) {
  throw Object.assign(new Error("Image generation is available through Agnes, or OpenRouter models that explicitly support image output."),{status:400});
 }
 async function createVideo(body) {
- const key=process.env.AGNES_API_KEY;if(!key)throw Object.assign(new Error("Add AGNES_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
- const prompt=String(body.prompt||"").trim();if(!prompt)throw Object.assign(new Error("Write a video prompt first."),{status:400});if(prompt.length>4000)throw Object.assign(new Error("Video prompt is too long."),{status:413});
- const seconds=["4","5","6","8","10","12"].includes(String(body.seconds))?String(body.seconds):"4";
- const model=String(body.model||"agnes-video-2.5-flash");
- if(!["agnes-video-2.5","agnes-video-2.5-flash","agnes-video-v2.0"].includes(model))throw Object.assign(new Error("Select a supported Agnes video model."),{status:400});
- const payload={model,prompt,size:model==="agnes-video-2.5-flash"?"720P":(["720P","1080P","1K","2K"].includes(body.size)?body.size:"720P"),seconds,n:1,mode:"text"};
- const result=await requestJSON(AGNES_BASE+"/videos",{method:"POST",headers:headersFor("agnes",key),body:JSON.stringify(payload)},120000);
- return {ok:true,provider:"agnes",model,videoId:result.video_id||result.id||null,taskId:result.task_id||null,status:result.status||"queued",raw:result};
+ const provider=String(body.provider||"agnes"),prompt=String(body.prompt||"").trim();
+ if(!prompt)throw Object.assign(new Error("Write a video prompt first."),{status:400});
+ if(prompt.length>4000)throw Object.assign(new Error("Video prompt is too long."),{status:413});
+ const seconds=Number(["4","5","6","8","10","12"].includes(String(body.seconds))?body.seconds:"4");
+ const aspect=["1:1","3:4","4:3","16:9","9:16","2:3","3:2","21:9"].includes(body.ratio)?body.ratio:"16:9";
+ const model=String(body.model||(provider==="agnes"?"agnes-video-2.5-flash":"")).trim();
+ if(provider==="agnes"){
+  const key=process.env.AGNES_API_KEY;if(!key)throw Object.assign(new Error("Add AGNES_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
+  if(!["agnes-video-2.5","agnes-video-2.5-flash","agnes-video-v2.0"].includes(model))throw Object.assign(new Error("Select a supported Agnes video model."),{status:400});
+  const size=model==="agnes-video-2.5-flash"?"720P":(["720P","1080P","1K","2K"].includes(body.size)?body.size:"720P");
+  const payload={model,prompt,size,seconds:String(seconds),n:1,mode:"text"};
+  const result=await requestJSON(AGNES_BASE+"/videos",{method:"POST",headers:headersFor("agnes",key),body:JSON.stringify(payload)},120000);
+  const videoId=result.video_id||result.id||null;
+  return {ok:true,provider,model,videoId,taskId:result.task_id||null,status:result.status||"queued",raw:result};
+ }
+ if(provider==="openrouter"){
+  const key=process.env.OPENROUTER_API_KEY;if(!key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
+  if(!model||model.length>180)throw Object.assign(new Error("Choose a model from the OpenRouter video model list."),{status:400});
+  const allowedRes=["480p","720p","1080p","1K","2K"];
+  const resolution=allowedRes.find(x=>x.toLowerCase()===String(body.size||"720p").toLowerCase())||"720p";
+  const payload={model,prompt,aspect_ratio:aspect,duration:seconds,resolution,generate_audio:body.generateAudio===true};
+  const result=await requestJSON(OPENROUTER_BASE+"/videos",{method:"POST",headers:headersFor("openrouter",key),body:JSON.stringify(payload)},120000);
+  const videoId=result.id||result.data?.id||null;
+  return {ok:true,provider,model,videoId,status:result.status||"pending",pollingUrl:result.polling_url||null,generationId:result.generation_id||null,raw:result};
+ }
+ throw Object.assign(new Error("Video generation is available through Agnes or OpenRouter."),{status:400});
 }
 async function videoStatus(query) {
- const key=process.env.AGNES_API_KEY;if(!key)throw Object.assign(new Error("Add AGNES_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
- const id=String(query.video_id||"").trim(),model=String(query.model||"agnes-video-2.5-flash").trim();
+ const provider=String(query.provider||"agnes"),id=String(query.video_id||"").trim(),model=String(query.model||"agnes-video-2.5-flash").trim();
  if(!id||id.length>240)throw Object.assign(new Error("video_id is required."),{status:400});
- const url="https://apihub.agnes-ai.com/agnesapi?video_id="+encodeURIComponent(id)+"&model_name="+encodeURIComponent(model);
- const result=await requestJSON(url,{method:"GET",headers:{Authorization:"Bearer "+key}},45000);
- return {ok:true,result};
+ if(provider==="openrouter"){
+  const key=process.env.OPENROUTER_API_KEY;if(!key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
+  const result=await requestJSON(OPENROUTER_BASE+"/videos/"+encodeURIComponent(id),{method:"GET",headers:headersFor("openrouter",key)},45000);
+  return {ok:true,provider,videoId:id,result};
+ }
+ if(provider==="agnes"){
+  const key=process.env.AGNES_API_KEY;if(!key)throw Object.assign(new Error("Add AGNES_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
+  const url="https://apihub.agnes-ai.com/agnesapi?video_id="+encodeURIComponent(id)+"&model_name="+encodeURIComponent(model);
+  const result=await requestJSON(url,{method:"GET",headers:{Authorization:"Bearer "+key}},45000);
+  return {ok:true,provider,videoId:id,result};
+ }
+ throw Object.assign(new Error("Unknown video provider."),{status:400});
 }
+
 async function embeddings(body) {
  const key=process.env.OPENROUTER_API_KEY;if(!key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
  const model=String(body.model||"").trim(),input=body.input;
@@ -240,15 +267,24 @@ async function main(req,res) {
  const url=new URL(req.url,"https://bookflow.local"),action=String(url.searchParams.get("action")||"");
  try{
   if(req.method==="GET"&&action==="status"){
-   return send(res,200,{ok:true,providers:{agnes:{configured:!!process.env.AGNES_API_KEY,chat:true,vision:true,image:true,video:true},openrouter:{configured:!!process.env.OPENROUTER_API_KEY,chat:true,vision:true,image:true,embeddings:true}},app:"BookFlow Studio",requiresServerKeys:true});
+   return send(res,200,{ok:true,providers:{agnes:{configured:!!process.env.AGNES_API_KEY,chat:true,vision:true,image:true,video:true,toolCalling:true},openrouter:{configured:!!process.env.OPENROUTER_API_KEY,chat:true,vision:true,image:true,video:true,embeddings:true,toolCalling:true}},app:"BookFlow Studio",requiresServerKeys:true});
   }
   if(req.method==="GET"&&action==="models"){
-   const provider=String(url.searchParams.get("provider")||"agnes"),info=providerInfo(provider);
+   const provider=String(url.searchParams.get("provider")||"agnes"),modality=String(url.searchParams.get("modality")||"chat"),info=providerInfo(provider);
    if(!info.key)return send(res,424,{error:"API key is not configured in Vercel Environment Variables.",code:"PROVIDER_NOT_CONFIGURED"});
-   const result=await requestJSON(info.models,{method:"GET",headers:headersFor(provider,info.key)},45000);
-   const data=Array.isArray(result.data)?result.data:[];return send(res,200,{ok:true,provider,models:data.map(m=>({id:m.id,name:m.name||m.id,description:m.description||"",context_length:m.context_length||null,architecture:m.architecture||null,top_provider:m.top_provider||null,pricing:m.pricing||null})).slice(0,500)});
+   let endpoint=info.models;
+   if(provider==="openrouter"){
+    const paths={chat:"/models?output_modalities=text",image:"/images/models",video:"/videos/models",embeddings:"/embeddings/models"};
+    if(!paths[modality])return send(res,400,{error:"Unsupported model modality.",supportedModalities:Object.keys(paths)});
+    endpoint=OPENROUTER_BASE+paths[modality];
+   } else if(!["chat","image","video"].includes(modality)) return send(res,400,{error:"Agnes model discovery supports chat, image and video model lists."});
+   const result=await requestJSON(endpoint,{method:"GET",headers:headersFor(provider,info.key)},45000);
+   let data=Array.isArray(result.data)?result.data:[];
+   if(provider==="agnes"&&modality==="image")data=[{id:"agnes-image-2.5-flash",name:"Agnes Image 2.5 Flash",description:"Image generation and image editing, subject to key access."},{id:"agnes-image-2.1-flash",name:"Agnes Image 2.1 Flash (legacy)"}];
+   if(provider==="agnes"&&modality==="video")data=[{id:"agnes-video-2.5-flash",name:"Agnes Video 2.5 Flash · 720P"},{id:"agnes-video-2.5",name:"Agnes Video 2.5 · 720P–2K"},{id:"agnes-video-v2.0",name:"Agnes Video v2.0 (legacy)"}];
+   return send(res,200,{ok:true,provider,modality,models:data.map(m=>({id:m.id,name:m.name||m.id,description:m.description||"",context_length:m.context_length||null,architecture:m.architecture||null,top_provider:m.top_provider||null,pricing:m.pricing||null,supported_parameters:m.supported_parameters||null,capabilities:m.capabilities||null})).slice(0,500)});
   }
-  if(req.method==="GET"&&action==="video-status")return send(res,200,await videoStatus({video_id:url.searchParams.get("video_id"),model:url.searchParams.get("model")}));
+  if(req.method==="GET"&&action==="video-status")return send(res,200,await videoStatus({provider:url.searchParams.get("provider")||"agnes",video_id:url.searchParams.get("video_id"),model:url.searchParams.get("model")}));
   if(req.method!=="POST")return send(res,405,{error:"Use GET for status/model discovery or POST for provider requests."});
   const body=readBody(req),task=String(body.action||"chat");
   if(task==="chat")return send(res,200,await chat(req,body));
