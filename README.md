@@ -1,58 +1,108 @@
 # BookFlow Studio — Book Layout & Print Manager
 
-BookFlow Studio is a browser-based personal tool for preparing text manuscripts and generating reading-order PDFs or saddle-stitched booklet PDFs.
+A local-first book layout and prepress workspace with reusable layout profiles, booklet imposition, print checks and a server-side AI wrapper for Agnes AI and OpenRouter.
 
-## Working in this release
+## Current application
 
-- Multiple book projects, saved in the current browser's local storage.
-- JSON project export/import for backups.
-- Plain-text and Markdown manuscript import, editing, undo/redo, and manual page-break marker.
-- Page format/orientation, margins, gutter, columns, line spacing, title/author metadata, and visible page numbering.
-- Approximate live page preview.
-- Reading-order PDF export with selectable text.
-- Booklet PDF generation with signature padding, corrected reader-page pairing, physical sheet dimensions, proportional fit, fold/alignment marks, and sheet-by-sheet preview.
-- Separate manual-duplex front/back PDFs and a single-sided booklet PDF that leaves the reverse of each physical sheet blank.
-- A duplex orientation test sheet.
-- Printer profiles for Epson ET-4850, Epson L8050, and HP LaserJet Pro 400 family.
-- Automated page-order, signature, pagination, and geometry tests in Node.js.
+- Multiple book projects saved to the current browser's local storage; JSON project backup/import.
+- TXT/Markdown manuscript import and editing, basic heading detection, page-break markers, undo/redo.
+- Book page sizes, orientation, margins, gutter, columns, line spacing, visible page numbers and approximate pagination.
+- Reusable named presets:
+  - A5 Paperback
+  - A6 Pocket Book
+  - B5 Textbook (two columns)
+  - A4 Colour Workbook
+  - A5 Black & White Interior
+  - Cover / Photo Job for Epson L8050
+- User can save custom named presets and reuse them for future projects in the same browser.
+- Reading-order PDF, saddle-stitched booklet PDF, separate manual-duplex front/back PDFs, a single-sided booklet PDF, and a duplex alignment test.
+- Signature padding and page-pairing algorithm with geometry calculation; per-sheet preview.
+- Printer workflow profiles for Epson ET-4850, Epson L8050 and HP LaserJet Pro 400 variants.
+- AI Studio UI for book Q&A, manuscript section lookup, layout/print suggestions, vision input, image generation, asynchronous video jobs/status, model discovery and OpenRouter embeddings.
+- GitHub Actions runs syntax checks and page imposition/pagination tests on each push.
 
-## Run and test
+## Set up the AI providers
 
-Requires Node.js 20+.
+Do not put API keys in the source code, index.html, src/app.mjs, this README, or a committed .env file.
 
-```sh
-npm run check
-npm test
-```
+In the Vercel project Dashboard → Settings → Environment Variables, add:
 
-The interface loads `pdf-lib` from a public CDN. If that dependency is blocked/offline, PDF export will not work until the library is bundled locally.
+| Name | Provider |
+|---|---|
+| AGNES_API_KEY | Agnes AI |
+| OPENROUTER_API_KEY | OpenRouter |
 
-## Booklet imposition
+Enable the variable for the environments where you deploy (normally Production and Preview), save, and redeploy. The UI's API Setup tab shows only whether a key is configured; it never reads or displays key values.
 
-For a signature with N pages, physical sheet i (zero-based) is paired as:
+**Agnes endpoints implemented**
+- Model discovery: GET https://apihub.agnes-ai.com/v1/models
+- Text chat, tool calling and multimodal image input: POST /v1/chat/completions
+- Image generation/editing: POST /v1/images/generations
+- Async video job creation: POST /v1/videos
+- Video result polling: GET /agnesapi?video_id=...&model_name=...
 
-- Front: `[N - 2i, 1 + 2i]`
-- Back: `[2 + 2i, N - 1 - 2i]`
+Default documented model IDs in this integration are agnes-2.5-flash for text/vision/tool calling, agnes-image-2.5-flash for image output and agnes-video-2.5-flash for video output. Availability depends on the specific API key and provider account; use “Load models” where supported and check Agnes's current catalog before relying on any model ID.
 
-Page numbers are local to each signature and then mapped to reader-order indices. Padding blanks are explicit null pages. Automated tests verify that each real reader page is present once and only once across a broad set of page counts and signature sizes.
+**OpenRouter endpoints implemented**
+- Model discovery: GET https://openrouter.ai/api/v1/models
+- Chat/tool calling/vision: POST /api/v1/chat/completions
+- Image output via chat models that support modalities: ["text","image"]
+- Text embeddings: POST /api/v1/embeddings
 
-## Printer guidance (verify the installed model/driver)
+OpenRouter requests use the official application-identification headers:
+- HTTP-Referer: https://bookflow-studio-fastcomputerspc2-1341.vercel.app
+- X-OpenRouter-Title: BookFlow Studio
 
-- **Epson EcoTank ET-4850 — color interior pages / general jobs:** Epson documents automatic duplex. On the US support guidance, automatic duplex is available for plain paper in A4 or Letter; photo/glossy media is not duplex-compatible. Use the appropriate paper type and test one sheet.
-- **Epson L8050 — color covers and photo pages:** published specifications do not list automatic two-sided printing. Use the manual-duplex fronts/backs workflow for suitable media, or print the cover as a separate single-sided job.
-- **HP LaserJet Pro 400 family — black book interiors:** the app now asks for the exact model for the M401 variants. HP's M401-series documentation lists the M401n as manual duplex, while M401dn/M401dw list automatic duplex. If your printer is another 400-series model, leave the profile on manual duplex until the exact driver/model is confirmed.
+BookFlow does not impersonate Claude Code or another external client. If OpenRouter reports an unknown client, check the returned status/message, model access and API key configuration; do not spoof another application's identity.
 
-Official references:
-- Epson ET-4850 double-sided settings: https://epson.com/faq/SPT_C11CJ60202~faq-0000802-et4850
-- Epson ET-4850 supported paper for duplex: https://files.support.epson.com/docid/cpd6/cpd60203/source/printers/source/paper_loading/reference/et4850/double_sided_capacity_us_canada_et4850.html
-- Epson L8050 specifications should be checked for the region/model sold in your market.
+The browser calls a Vercel serverless route at /api/ai; it does not call provider APIs with exposed keys. That route:
+- checks the calling Origin against the BookFlow deployment domains;
+- keeps provider keys server-side;
+- limits prompt size and permitted actions;
+- sends only allow-listed in-app tool calls;
+- never performs an unrequested manuscript mutation;
+- returns provider errors without returning API key contents.
 
-## Known limitations — not a finished desktop-publishing replacement
+## Local development and checks
 
-- DOCX/PDF import and OCR are not implemented.
-- Image upload, anchoring, cropping, and full-page image placement are not implemented.
-- Editable DOCX export, automatic table of contents, footnotes, advanced headers/footers, bleed, and reliable mixed-orientation sections are not implemented.
-- Pagination and preview use an approximate text-flow model; exported PDF is independently paginated with embedded standard PDF fonts, so the result must be proofread.
-- Urdu/Arabic script is deliberately blocked at PDF export until a suitable Unicode font is embedded. Do not use this build to produce Urdu/Arabic text PDFs yet.
-- Duplex flip-edge behavior depends on driver, paper orientation, and device. This tool cannot physically verify a printer; print the supplied test sheet before running a book.
-- No cross-device/cloud project sync is enabled. Export a JSON backup to keep projects safe.
+Requires Node.js 20+. Run:
+
+    npm run check
+    npm test
+
+The client loads pdf-lib from a public CDN. If that dependency is blocked/offline, PDF export will not work until the library is available.
+
+## Booklet math
+
+For one saddle-stitched signature with local page count N, physical sheet i (zero-based) is paired as:
+
+- Front: [N - 2i, 1 + 2i]
+- Back: [2 + 2i, N - 1 - 2i]
+
+The engine maps those local numbers to reading-order indices per signature and represents padding pages as explicit blanks. Automated tests verify that every reader page is preserved exactly once across many page counts and signature sizes.
+
+## Printer guidance for this shop
+
+- **Epson ET-4850:** use as the full-colour interior-page profile. Automatic duplex depends on paper size/media; run a test sheet and check the installed Epson driver. Keep photo/glossy cover work separate from plain-paper duplex work.
+- **Epson L8050:** covers and photo work. The preset selects single-sided/manual-duplex workflows; do not assume automatic duplex support.
+- **HP LaserJet Pro 400:** black book interiors. Select the exact model when applicable (M401n is manual duplex; M401dn/M401dw list automatic duplex). Other 400-family models need their own driver/model check.
+
+For all printers, use the app's duplex test sheet before printing an entire book. Verify top edge, page order, front/back orientation, scaling and the printer's actual feed path.
+
+## Known limitations
+
+- DOCX/PDF import and OCR are not implemented yet.
+- Image placement/anchoring within the manuscript and editable DOCX export are not implemented yet.
+- Text pagination/preview use an approximate layout model; exported PDFs must be opened and proofread.
+- Urdu/Arabic PDF text is blocked until an appropriate embedded Unicode font and shaping are integrated.
+- Full mixed section sizes/orientations, advanced headers/footers, footnotes, table of contents, bleed/crop production features and persistent semantic vector storage are not yet implemented.
+- Video generation and AI providers cannot be live-tested without your API keys; key presence is shown by the app, but the provider may still reject a model or quota.
+- Vercel Git integration can require a GitHub Login Connection in Vercel before pushes automatically redeploy. If it is linked, GitHub Actions checks code and Vercel should build from the same repo. Until connection is confirmed, the production deployment can be refreshed using the server-side deployment tool.
+
+## Official API references
+
+- Agnes AI model catalog: https://github.com/AgnesAI-Labs/AgnesAI-Models
+- Agnes AI developer docs: https://agnes-ai.com/doc/overview
+- OpenRouter chat completions: https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion
+- OpenRouter embeddings: https://openrouter.ai/docs/api/api-reference/embeddings/create-embeddings
+- OpenRouter Claude Code guide (only for actual Claude Code traffic): https://openrouter.ai/docs/cookbook/coding-agents/claude-code-integration
