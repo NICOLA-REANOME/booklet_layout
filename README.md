@@ -50,7 +50,7 @@ Default documented model IDs in this integration are agnes-2.5-flash for text/vi
 - Text embeddings: POST /api/v1/embeddings
 
 OpenRouter requests use the official application-identification headers:
-- HTTP-Referer: https://bookflow-studio-fastcomputerspc2-1341.vercel.app
+- HTTP-Referer: https://bookflow-studio-git.vercel.app
 - X-OpenRouter-Title: BookFlow Studio
 
 BookFlow does not impersonate Claude Code or another external client. If OpenRouter reports an unknown client, check the returned status/message, model access and API key configuration; do not spoof another application's identity.
@@ -97,12 +97,14 @@ For all printers, use the app's duplex test sheet before printing an entire book
 - Urdu/Arabic PDF text is blocked until an appropriate embedded Unicode font and shaping are integrated.
 - Full mixed section sizes/orientations, advanced headers/footers, footnotes, table of contents, bleed/crop production features and persistent semantic vector storage are not yet implemented.
 - Video generation and AI providers cannot be live-tested without your API keys; key presence is shown by the app, but the provider may still reject a model or quota.
-- Vercel Git integration can require a GitHub Login Connection in Vercel before pushes automatically redeploy. If it is linked, GitHub Actions checks code and Vercel should build from the same repo. Until connection is confirmed, the production deployment can be refreshed using the server-side deployment tool.
+- Vercel project `bookflow-studio-git` is linked to this repository on `main`; pushes trigger production deployments and the GitHub Actions test workflow.
 
 ## Official API references
 
 - Agnes AI model catalog: https://github.com/AgnesAI-Labs/AgnesAI-Models
 - Agnes AI developer docs: https://agnes-ai.com/doc/overview
 - OpenRouter chat completions: https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion
+- OpenRouter video generation: https://openrouter.ai/docs/api/api-reference/video-generation/create-videos
+- OpenRouter video model catalogue: https://openrouter.ai/collections/video-models/
 - OpenRouter embeddings: https://openrouter.ai/docs/api/api-reference/embeddings/create-embeddings
 - OpenRouter Claude Code guide (only for actual Claude Code traffic): https://openrouter.ai/docs/cookbook/coding-agents/claude-code-integration
