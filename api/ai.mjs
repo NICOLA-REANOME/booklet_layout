@@ -29,8 +29,12 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 function safeOrigin(req) {
-  const origin = req.headers.origin;
-  if (!origin) return true;
+  let origin = req.headers.origin;
+  // Same-origin GET requests may omit Origin; in production require a matching Referer instead of treating a missing Origin as trusted.
+  if (!origin) {
+    try { origin = new URL(req.headers.referer || "").origin; }
+    catch { return !process.env.VERCEL && process.env.NODE_ENV !== "production"; }
+  }
   if (APP_ORIGINS.has(origin)) return true;
   if (process.env.BOOKFLOW_APP_ORIGIN && origin === process.env.BOOKFLOW_APP_ORIGIN) return true;
   // Permit localhost only for local development; never as a production wildcard.
@@ -193,7 +197,7 @@ async function generateImage(body) {
  if(provider==="openrouter"){
   const info=providerInfo("openrouter");if(!info.key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
   const model=String(body.model||"").trim();if(!model)throw Object.assign(new Error("Choose an OpenRouter model that supports image output."),{status:400});
-  const result=await requestJSON(info.chat,{method:"POST",headers:headersFor("openrouter",info.key),body:JSON.stringify({model,messages:[{role:"user",content:prompt}],modalities:["text","image"],image_config:{aspect_ratio:ratio==="1:1"?"1:1":ratio},max_tokens:1500})},120000);
+  const result=await requestJSON(info.chat,{method:"POST",headers:headersFor("openrouter",info.key),body:JSON.stringify({model,messages:[{role:"user",content:prompt+"\nGenerate the image in a "+ratio+" aspect ratio."}],modalities:["text","image"],max_tokens:1500})},120000);
   const m=result?.choices?.[0]?.message||{},images=[];
   for(const im of (m.images||[])){const u=im?.image_url?.url||im?.url||null;if(u)images.push({url:u,b64:null});}
   if(!images.length&&Array.isArray(result.data)) for(const im of result.data){if(im.url||im.b64_json)images.push({url:im.url||null,b64:im.b64_json||null});}
