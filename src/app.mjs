@@ -205,6 +205,22 @@ $('loadModels')?.addEventListener('click',async()=>{
  catch(e){$('modelLoadStatus').textContent='Model list could not be loaded: '+e.message;}
  finally{button.disabled=false;button.textContent='Load models';}
 });
+async function loadProviderModels(provider,modality,listId,statusId){
+ const target=$(listId),statusEl=$(statusId);
+ if(!target)return [];
+ statusEl.textContent='Loading '+modality+' models from '+provider+'…';
+ const buttonId=modality==='image'?'loadImageModels':modality==='video'?'loadVideoModels':'loadEmbeddingModels';
+ const btn=$(buttonId);if(btn){btn.disabled=true;btn.textContent='Loading…';}
+ try{
+  const res=await fetch('/api/ai?action=models&provider='+encodeURIComponent(provider)+'&modality='+encodeURIComponent(modality),{cache:'no-store'});
+  const data=await res.json();if(!res.ok||!data.ok)throw Error(data.error||'Model discovery failed');
+  const models=data.models||[];target.replaceChildren();
+  for(const m of models){const option=document.createElement('option');option.value=m.id;option.label=m.name||m.id;option.title=m.description||'';target.append(option);}
+  statusEl.textContent=models.length+' '+modality+' model(s) returned by '+provider+'. Only models available through your key will work.';
+  return models;
+ }catch(e){statusEl.textContent='Could not load '+modality+' models: '+e.message;return [];}
+ finally{if(btn){btn.disabled=false;btn.textContent='Load models';}}
+}
 $('refreshAIStatus')?.addEventListener('click',refreshAIStatus);$('checkKeys')?.addEventListener('click',refreshAIStatus);
 document.querySelectorAll('[data-ai-mode]').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('[data-ai-mode]').forEach(x=>x.classList.toggle('active',x===b));
@@ -213,9 +229,15 @@ document.querySelectorAll('[data-ai-mode]').forEach(b=>b.addEventListener('click
 }));
 $('imageProvider')?.addEventListener('change',()=>{
  const p=$('imageProvider').value;
- if(p==='agnes')$('imageModel').value='agnes-image-2.5-flash';
- else $('imageModel').value='';
+ $('imageModel').value=p==='agnes'?'agnes-image-2.5-flash':'';
+ $('imageStatus').textContent=p==='agnes'?'Default Agnes model: agnes-image-2.5-flash.':'Load OpenRouter image models and choose a model that supports image output.';
 });
+$('loadImageModels')?.addEventListener('click',async()=>{
+ const provider=$('imageProvider').value;
+ const models=await loadProviderModels(provider,'image','imageModelList','imageStatus');
+ if(models.length&&!models.some(m=>m.id===$('imageModel').value))$('imageModel').value=models[0].id;
+});
+// Keep model discovery explicit so the user can inspect provider availability/quota before generating.
 $('imageReference')?.addEventListener('change',async e=>{
  const f=e.target.files?.[0];if(!f)return;if(f.size>2_500_000){alert('Please choose a reference image under 2.5 MB.');e.target.value='';return;}
  try{attachedReferenceData=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(f);});}
@@ -231,23 +253,51 @@ $('generateImage')?.addEventListener('click',async()=>{
  }catch(e){$('imageStatus').textContent='Image generation failed: '+e.message;$('imageResults').textContent='No image was returned.';}
  finally{button.disabled=false;button.textContent='Generate image';}
 });
+$('videoProvider')?.addEventListener('change',()=>{
+ const provider=$('videoProvider').value;
+ $('videoModel').value=provider==='agnes'?'agnes-video-2.5-flash':'';
+ $('videoStatus').textContent=provider==='agnes'?'Agnes Video 2.5 Flash default selected.':'Load OpenRouter video models to see current IDs, supported durations and resolutions.';
+ $('videoSize').value=provider==='agnes'?'720P':'720p';
+});
+$('loadVideoModels')?.addEventListener('click',async()=>{
+ const provider=$('videoProvider').value;
+ const models=await loadProviderModels(provider,'video','videoModelList','videoStatus');
+ if(models.length&&!models.some(m=>m.id===$('videoModel').value))$('videoModel').value=models[0].id;
+});
 $('createVideo')?.addEventListener('click',async()=>{
- const button=$('createVideo'),prompt=$('videoPrompt').value.trim();if(!prompt){alert('Write a video prompt first.');return;}
- button.disabled=true;button.textContent='Submitting…';$('videoStatus').textContent='Submitting asynchronous generation job…';
- try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'video',model:$('videoModel').value,prompt,seconds:$('videoSeconds').value,size:'720P'})});const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Video request failed');
- $('videoId').value=d.videoId||'';lastVideoModel=d.model;$('videoStatus').textContent='Job created · status: '+(d.status||'queued')+(d.videoId?' · ID saved above':' · provider did not return a video_id');$('videoResult').textContent=JSON.stringify(d.raw||d,null,2);
+ const button=$('createVideo'),prompt=$('videoPrompt').value.trim(),provider=$('videoProvider').value,model=$('videoModel').value.trim();
+ if(!prompt){alert('Write a video prompt first.');return;}
+ if(!model){alert('Load models and choose a video model ID first.');return;}
+ button.disabled=true;button.textContent='Submitting…';$('videoStatus').textContent='Submitting asynchronous generation job through '+provider+'…';
+ try{
+  const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'video',provider,model,prompt,seconds:$('videoSeconds').value,size:$('videoSize').value,ratio:$('videoRatio').value,generateAudio:$('videoAudio').checked})});
+  const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Video request failed');
+  $('videoId').value=d.videoId||'';lastVideoModel=d.model;
+  $('videoStatus').textContent='Job created · '+provider+' · '+(d.status||'pending')+(d.videoId?' · ID saved above':' · provider did not return a job ID')+(d.usage?.cost!=null?' · reported cost $'+d.usage.cost:'');
+  $('videoResult').replaceChildren();const pre=document.createElement('pre');pre.className='small';pre.style.whiteSpace='pre-wrap';pre.style.overflowWrap='anywhere';pre.textContent=JSON.stringify(d.raw||d,null,2);$('videoResult').append(pre);
  }catch(e){$('videoStatus').textContent='Video request failed: '+e.message;}
  finally{button.disabled=false;button.textContent='Start video generation';}
 });
 $('pollVideo')?.addEventListener('click',async()=>{
- const id=$('videoId').value.trim();if(!id){alert('Create a video job or enter the provider video_id first.');return;}
- $('pollVideo').disabled=true;$('videoStatus').textContent='Checking job…';
- try{const model=$('videoModel').value,res=await fetch('/api/ai?action=video-status&video_id='+encodeURIComponent(id)+'&model='+encodeURIComponent(model)),d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Status request failed');
- const r=d.result||{};$('videoStatus').textContent='Video status: '+(r.status||'provider response received');$('videoResult').replaceChildren();
- if(typeof r.url==="string"&&r.url.startsWith("https://")){const a=document.createElement("a");a.href=r.url;a.target="_blank";a.rel="noreferrer";a.textContent="Open generated video ↗";$("videoResult").append(a);const lowerUrl=r.url.toLowerCase();if(lowerUrl.includes(".mp4")||lowerUrl.includes(".webm")){const v=document.createElement("video");v.src=r.url;v.controls=true;v.style.marginTop="12px";$("videoResult").append(v);}}
- else {$('videoResult').textContent=JSON.stringify(r,null,2);}
+ const id=$('videoId').value.trim(),provider=$('videoProvider').value,model=$('videoModel').value.trim();
+ if(!id){alert('Create a video job or enter the returned job/video ID first.');return;}
+ $('pollVideo').disabled=true;$('videoStatus').textContent='Checking '+provider+' job…';
+ try{
+  const res=await fetch('/api/ai?action=video-status&provider='+encodeURIComponent(provider)+'&video_id='+encodeURIComponent(id)+'&model='+encodeURIComponent(model)),d=await res.json();
+  if(!res.ok||!d.ok)throw Error(d.error||'Status request failed');
+  const r=d.result||{};$('videoStatus').textContent='Video status: '+(r.status||'provider response received')+(r.error?' · '+r.error:'');
+  $('videoResult').replaceChildren();
+  const videoUrl=(r.url||r.unsigned_urls?.[0]||r.data?.url||"");
+  if(typeof videoUrl==="string"&&videoUrl.startsWith("https://")){
+   const v=document.createElement('video');v.src=videoUrl;v.controls=true;v.playsInline=true;v.style.width='100%';v.style.maxHeight='420px';$('videoResult').append(v);
+   const a=document.createElement('a');a.href=videoUrl;a.target='_blank';a.rel='noreferrer';a.textContent='Open / save generated video ↗';a.style.display='block';a.style.marginTop='10px';$('videoResult').append(a);
+  } else {const pre=document.createElement('pre');pre.className='small';pre.style.whiteSpace='pre-wrap';pre.style.overflowWrap='anywhere';pre.textContent=JSON.stringify(r,null,2);$('videoResult').append(pre);}
  }catch(e){$('videoStatus').textContent='Video status check failed: '+e.message;}
  finally{$('pollVideo').disabled=false;}
+});
+$('loadEmbeddingModels')?.addEventListener('click',async()=>{
+ const models=await loadProviderModels('openrouter','embeddings','embeddingModelList','embeddingStatus');
+ if(models.length&&!models.some(m=>m.id===$('embeddingModel').value))$('embeddingModel').value=models[0].id;
 });
 $('testEmbedding')?.addEventListener('click',async()=>{
  const text=$('embeddingText').value.trim(),model=$('embeddingModel').value.trim();if(!text||!model){alert('Enter an embedding model ID and a short text sample.');return;}
