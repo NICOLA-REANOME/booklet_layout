@@ -279,7 +279,7 @@ async function main(req,res) {
     if(!paths[modality])return send(res,400,{error:"Unsupported model modality.",supportedModalities:Object.keys(paths)});
     endpoint=OPENROUTER_BASE+paths[modality];
    } else if(!["chat","image","video"].includes(modality)) return send(res,400,{error:"Agnes model discovery supports chat, image and video model lists."});
-   const result=await requestJSON(endpoint,{method:"GET",headers:headersFor(provider,info.key)},45000);
+   const result=(provider==="agnes"&&modality!=="chat")?{data:[]}:await requestJSON(endpoint,{method:"GET",headers:headersFor(provider,info.key)},45000);
    let data=Array.isArray(result.data)?result.data:[];
    if(provider==="agnes"&&modality==="image")data=[{id:"agnes-image-2.5-flash",name:"Agnes Image 2.5 Flash",description:"Image generation and image editing, subject to key access."},{id:"agnes-image-2.1-flash",name:"Agnes Image 2.1 Flash (legacy)"}];
    if(provider==="agnes"&&modality==="video")data=[{id:"agnes-video-2.5-flash",name:"Agnes Video 2.5 Flash · 720P"},{id:"agnes-video-2.5",name:"Agnes Video 2.5 · 720P–2K"},{id:"agnes-video-v2.0",name:"Agnes Video v2.0 (legacy)"}];
