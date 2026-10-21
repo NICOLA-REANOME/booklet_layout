@@ -3,6 +3,7 @@ const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const APP_ORIGINS = new Set([
   "https://bookflow-studio-fastcomputerspc2-1341.vercel.app",
   "https://bookflow-studio-rust.vercel.app",
+  "https://bookflow-studio-git.vercel.app",
   "https://bookflow-studio-git-fastcomputerspc2-1341.vercel.app",
   "https://bookflow-studio-git-git-main-fastcomputerspc2-1341.vercel.app"
 ]);
@@ -75,7 +76,7 @@ async function requestJSON(url, opts, timeoutMs=90000) {
 function headersFor(provider, key) {
   const h={Authorization:"Bearer "+key,"Content-Type":"application/json"};
   if(provider==="openrouter") {
-    h["HTTP-Referer"]=process.env.BOOKFLOW_APP_ORIGIN || "https://bookflow-studio-git-fastcomputerspc2-1341.vercel.app";
+    h["HTTP-Referer"]=process.env.BOOKFLOW_APP_ORIGIN || "https://bookflow-studio-git.vercel.app";
     h["X-OpenRouter-Title"]="BookFlow Studio";
     h["X-OpenRouter-Categories"]="productivity,writing";
   }
