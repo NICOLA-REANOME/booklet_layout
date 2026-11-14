@@ -232,12 +232,12 @@ async function generateImage(body) {
   const info=providerInfo("openrouter");if(!info.key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
   const model=String(body.model||"").trim();if(!model)throw Object.assign(new Error("Choose an OpenRouter image model from Load models."),{status:400});
   const refs=Array.isArray(body.referenceImages)?body.referenceImages.filter(x=>typeof x==="string"&&(/^https:\/\/|^data:image\/(?:png|jpeg|webp);base64,/i.test(x))).slice(0,4):[];
-  const payload={model,prompt,aspect_ratio:ratio,resolution:size==="3K"?"2K":size,n:1};
+  const openRouterResolution=["4K","3K"].includes(size)?"2K":size;const payload={model,prompt,aspect_ratio:ratio,resolution:openRouterResolution,n:1};
   if(refs.length)payload.input_references=refs.map(url=>({type:"image_url",image_url:{url}}));
   const result=await requestJSON(OPENROUTER_BASE+"/images",{method:"POST",headers:headersFor("openrouter",info.key),body:JSON.stringify(payload)},48000);
   const images=(Array.isArray(result.data)?result.data:[]).map(x=>({url:x.url||null,b64:x.b64_json||null,mediaType:x.media_type||"image/png",revisedPrompt:x.revised_prompt||null})).filter(x=>x.url||x.b64);
   if(!images.length)throw Object.assign(new Error("OpenRouter returned no image bytes. Check model support, required parameters and available credits."),{status:502});
-  return {ok:true,provider,model,images,usage:result.usage||null};
+  return {ok:true,provider,model,resolution:openRouterResolution,images,usage:result.usage||null};
  }
  throw Object.assign(new Error("Image generation is available through Agnes, or OpenRouter models that explicitly support image output."),{status:400});
 }
