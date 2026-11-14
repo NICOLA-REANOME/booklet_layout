@@ -255,7 +255,7 @@ async function refreshAIStatus(){
  try{const r=await fetch('/api/ai?action=status',{cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||'Status endpoint unavailable');renderAIStatus(d);}
  catch(e){$('agnesDot').className='provider-dot bad';$('orDot').className='provider-dot bad';$('agnesStatus').textContent='AI API unavailable';$('orStatus').textContent='Check deployment';$('setupDetails').textContent='The /api/ai status route could not be reached. '+e.message+' If this is a static preview, deploy the Vercel API route too.';}
 }
-function currentBookPayload(){const p=active();return {title:p?.title||$('title').value,author:p?.author||$('author').value,text:String($('manuscript').value||'').slice(0,30000),settings:fromUI()};}
+function currentBookPayload(){const p=active();return {title:p?.title||$('title').value,author:p?.author||$('author').value,text:String($('manuscript').value||'').slice(0,250000),settings:fromUI()};}
 function updateAIContext(){
  const p=active(),s=readSettings();if(!$('aiBookContext'))return;
  $('aiBookContext').textContent=(p?.title||$('title').value||'Untitled book')+'\\n'+wordCount($('manuscript').value)+' words · '+layouts.length+' estimated pages\\n'+(s.pagePreset||'Custom')+' · '+s.pageW+'×'+s.pageH+' mm · '+s.columns+' column(s)\\n'+s.printer+' · '+s.mode+' · '+s.sheetW+'×'+s.sheetH+' mm sheet';
@@ -331,7 +331,7 @@ async function sendAIChat(textOverride){
   const response=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'chat',provider,model,messages:requestMessages,book:currentBookPayload(),enableTools:true})});
   const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error||('Provider error '+response.status));
   pending.remove();const reply=data.reply||'(The model returned an empty message.)';addChatMessage('assistant',reply);
-  aiHistory.push({role:'user',content:prompt},{role:'assistant',content:reply});if(aiHistory.length>18)aiHistory=aiHistory.slice(-18);if(aiHistory.length>18)aiHistory=aiHistory.slice(-18);
+  aiHistory.push({role:'user',content:prompt},{role:'assistant',content:reply});if(aiHistory.length>18)aiHistory=aiHistory.slice(-18);
   appendToolCards(data.toolRuns||[]);
   const use=$('modelLoadStatus');use.textContent='Provider: '+data.provider+' · model: '+data.model+(data.usage?.total_tokens?' · tokens: '+data.usage.total_tokens:'');
  }catch(e){pending.remove();addChatMessage('assistant','Request failed: '+e.message+'\\nOpen API setup to check provider keys and model access.');}
