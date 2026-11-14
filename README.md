@@ -4,8 +4,8 @@ A local-first book layout and prepress workspace with reusable layout profiles, 
 
 ## Current application
 
-- Multiple book projects saved to the current browser's local storage; JSON project backup/import.
-- TXT/Markdown manuscript import and editing, basic heading detection, page-break markers, undo/redo.
+- Multiple book projects saved in browser IndexedDB (legacy localStorage projects are migrated on first run); project search, duplicate, delete, and JSON backup/restore. Books remain on this device and do not sync across devices.
+- TXT, Markdown, DOCX and text-based PDF import; manuscript editing, basic heading detection, page-break markers, undo/redo. Scanned image-only PDFs still need OCR outside this version.
 - Book page sizes, orientation, margins, gutter, columns, line spacing, visible page numbers and approximate pagination.
 - Reusable named presets:
   - A5 Paperback
@@ -15,11 +15,11 @@ A local-first book layout and prepress workspace with reusable layout profiles, 
   - A5 Black & White Interior
   - Cover / Photo Job for Epson L8050
 - User can save custom named presets and reuse them for future projects in the same browser.
-- Reading-order PDF, saddle-stitched booklet PDF, separate manual-duplex front/back PDFs, a single-sided booklet PDF, and a duplex alignment test.
-- Signature padding and page-pairing algorithm with geometry calculation; per-sheet preview.
+- Reading-order PDF, basic editable Word DOCX export, saddle-stitched booklet PDF, separate manual-duplex front/back PDFs, a single-sided booklet PDF, and a duplex alignment test.
+- Signature padding and page-pairing algorithm with geometry calculation; per-sheet preview; configurable assumed printer edge margin and a separate safe-print-area fit mode.
 - Printer workflow profiles for Epson ET-4850, Epson L8050 and HP LaserJet Pro 400 variants.
-- AI Studio UI for book Q&A, manuscript section lookup, layout/print suggestions, vision input, image generation, asynchronous video jobs/status, model discovery and OpenRouter embeddings.
-- GitHub Actions runs syntax checks and page imposition/pagination tests on each push.
+- AI Studio for book Q&A, actual manuscript passage retrieval, non-destructive exact-before/after edit proposals, layout/print suggestions, vision input, image generation, asynchronous video jobs/status, modality model discovery and OpenRouter embeddings.
+- GitHub Actions runs JavaScript syntax checks, page-imposition/pagination tests, UI wiring smoke checks and API origin/request validation tests on each push.
 
 ## Set up the AI providers
 
@@ -32,7 +32,7 @@ In the Vercel project Dashboard → Settings → Environment Variables, add:
 | AGNES_API_KEY | Agnes AI |
 | OPENROUTER_API_KEY | OpenRouter |
 
-Enable the variable for the environments where you deploy (normally Production and Preview), save, and redeploy. The UI's API Setup tab shows only whether a key is configured; it never reads or displays key values.
+Enable the variable for the environments where you deploy (normally Production and Preview), save, and redeploy. The UI's API Setup tab shows only whether a key is configured; it never reads or displays key values. The current Vercel project has no provider keys configured yet, so real provider generation is not live-tested until you add them in that dashboard.
 
 **Agnes endpoints implemented**
 - Model discovery: GET https://apihub.agnes-ai.com/v1/models
@@ -60,12 +60,13 @@ OpenRouter requests use the official application-identification headers:
 
 BookFlow does not impersonate Claude Code or another external client. If OpenRouter reports an unknown client, check the returned status/message, model access and API key configuration; do not spoof another application's identity.
 
-The browser calls a Vercel serverless route at /api/ai; it does not call provider APIs with exposed keys. That route:
+The browser calls a Vercel serverless route at /api/ai; it does not call provider APIs with exposed keys. The project deploy config bounds this function to 60 seconds, and provider HTTP calls time out below that. The request-body guard is below Vercel's 4.5 MB Function payload ceiling. The route:
 - checks the calling Origin against the BookFlow deployment domains;
 - keeps provider keys server-side;
 - limits prompt size and permitted actions;
 - sends only allow-listed in-app tool calls;
 - never performs an unrequested manuscript mutation;
+- applies best-effort per-instance rate limits to chat/image/video/embedding requests;
 - returns provider errors without returning API key contents.
 
 ## Local development and checks
@@ -96,11 +97,14 @@ For all printers, use the app's duplex test sheet before printing an entire book
 
 ## Known limitations
 
-- DOCX/PDF import and OCR are not implemented yet.
-- Image placement/anchoring within the manuscript and editable DOCX export are not implemented yet.
+- OCR for scanned/image-only PDFs is not implemented.
+- DOCX import currently extracts manuscript text only; advanced Word styling, tracked changes, tables and embedded images are not preserved.
+- DOCX export creates an editable text document with basic title/heading styling; it does not yet include embedded images, headers/footers, footnotes, automatic contents, or print-production marks.
+- Image placement/anchoring within the manuscript is not implemented yet.
 - Text pagination/preview use an approximate layout model; exported PDFs must be opened and proofread.
+- The safe-edge value is a user-adjustable planning assumption, not a device-specific measurement. Confirm the actual printable area and feed/duplex path in each printer driver and run a test sheet.
 - Urdu/Arabic PDF text is blocked until an appropriate embedded Unicode font and shaping are integrated.
-- Full mixed section sizes/orientations, advanced headers/footers, footnotes, table of contents, bleed/crop production features and persistent semantic vector storage are not yet implemented.
+- Full mixed section sizes/orientations, advanced headers/footers, footnotes, automatic table of contents, bleed/crop production features and persistent semantic vector storage are not yet implemented.
 - Video generation and AI providers cannot be live-tested without your API keys; key presence is shown by the app, but the provider may still reject a model or quota.
 - Vercel project `bookflow-studio-git` is linked to this repository on `main`; pushes trigger production deployments and the GitHub Actions test workflow.
 
