@@ -19,13 +19,22 @@ export function getSheetDimensions(s){
 }
 export function calculateImpositionGeometry(s){
   const page=getPageDimensions(s),sheet=getSheetDimensions(s),mode=s.fitMode??'fit',percent=Number(s.customScalePercent??100);
+  const safeMargin=Number(s.safeEdgeMarginMm??5);
+  if(!Number.isFinite(safeMargin)||safeMargin<0||safeMargin*2>=Math.min(sheet.width,sheet.height))throw new RangeError('Printer-safe edge margin must be non-negative and smaller than half the sheet size.');
   if(mode==='custom'&&(!Number.isFinite(percent)||percent<=0||percent>200))throw new RangeError('Custom scale must be between 0% and 200%.');
   const requiredWidth=page.width*2,requiredHeight=page.height;
-  let scale=1;if(mode==='fit')scale=Math.min(1,sheet.width/requiredWidth,sheet.height/requiredHeight);if(mode==='custom')scale=percent/100;
+  const availableWidth=mode==='safe'?sheet.width-2*safeMargin:sheet.width;
+  const availableHeight=mode==='safe'?sheet.height-2*safeMargin:sheet.height;
+  let scale=1;
+  if(mode==='fit')scale=Math.min(1,sheet.width/requiredWidth,sheet.height/requiredHeight);
+  if(mode==='safe')scale=Math.min(1,availableWidth/requiredWidth,availableHeight/requiredHeight);
+  if(mode==='custom')scale=percent/100;
   const scaledWidth=requiredWidth*scale,scaledHeight=requiredHeight*scale,fits=scaledWidth<=sheet.width+1e-6&&scaledHeight<=sheet.height+1e-6;
   if(mode==='actual'&&!fits)throw new RangeError(`Actual-size spread ${requiredWidth.toFixed(2)} × ${requiredHeight.toFixed(2)} mm does not fit ${sheet.width.toFixed(2)} × ${sheet.height.toFixed(2)} mm paper. Choose fit-to-sheet or larger paper.`);
   if(mode==='custom'&&!fits)throw new RangeError('Custom scale is larger than the physical sheet.');
-  return {pageWidthMm:page.width,pageHeightMm:page.height,sheetWidthMm:sheet.width,sheetHeightMm:sheet.height,requiredWidthMm:requiredWidth,requiredHeightMm:requiredHeight,scale,scaledWidthMm:scaledWidth,scaledHeightMm:scaledHeight,offsetXmm:(sheet.width-scaledWidth)/2,offsetYmm:(sheet.height-scaledHeight)/2,fits,needsScaling:scale<1-1e-9,geometricClearanceMm:Math.min((sheet.width-scaledWidth)/2,(sheet.height-scaledHeight)/2)};
+  const offsetX=(sheet.width-scaledWidth)/2,offsetY=(sheet.height-scaledHeight)/2;
+  const clearance=Math.min(offsetX,offsetY);
+  return {pageWidthMm:page.width,pageHeightMm:page.height,sheetWidthMm:sheet.width,sheetHeightMm:sheet.height,requiredWidthMm:requiredWidth,requiredHeightMm:requiredHeight,availableWidthMm:availableWidth,availableHeightMm:availableHeight,safeEdgeMarginMm:safeMargin,scale,scaledWidthMm:scaledWidth,scaledHeightMm:scaledHeight,offsetXmm:offsetX,offsetYmm:offsetY,fits,needsScaling:scale<1-1e-9,geometricClearanceMm:clearance,safeAreaFit:mode==='safe'?clearance>=safeMargin-1e-6:clearance>=safeMargin-1e-6};
 }
 function validateSignatureSize(n){if(!Number.isInteger(n)||n<4||n%4)throw new RangeError('Signature size must be a multiple of four, at least 4 pages.');}
 export function buildSignatures(count,size=32){
