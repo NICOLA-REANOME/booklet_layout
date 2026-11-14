@@ -107,3 +107,14 @@ test('text ending in newlines does not create an extra blank reader page', () =>
   const all=pages.flatMap(p=>p.columns.flat()).filter(l=>l.text).map(l=>l.text).join(' ');
   assert.match(all,/Opening paragraph/);assert.match(all,/Second paragraph/);
 });
+
+test('printer-safe fit mode keeps the imposed spread inside a 5 mm edge allowance', () => {
+  const g = calculateImpositionGeometry({pageW:148,pageH:210,orientation:'portrait',sheetW:297,sheetH:210,sheetOrientation:'landscape',fitMode:'safe',safeEdgeMarginMm:5});
+  assert.ok(g.scale < 1);
+  assert.ok(g.geometricClearanceMm >= 5 - 1e-6);
+  assert.equal(g.fits,true);
+  assert.equal(g.safeAreaFit,true);
+});
+test('invalid printer-safe edge allowances are rejected', () => {
+  assert.throws(() => calculateImpositionGeometry({pageW:148,pageH:210,sheetW:297,sheetH:210,fitMode:'safe',safeEdgeMarginMm:110}),/edge margin/);
+});
