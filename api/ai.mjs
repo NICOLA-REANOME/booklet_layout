@@ -48,7 +48,7 @@ function readBody(req) {
   let body = req.body;
   if (typeof body === "string") {
     if (body.length > MAX_BODY_CHARS) throw Object.assign(new Error("Request is too large. Keep image uploads under 3 MB."), { status:413 });
-    body = JSON.parse(body || "{}");
+    try { body = JSON.parse(body || "{}"); } catch { throw Object.assign(new Error("Request body is not valid JSON."),{status:400}); }
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) throw Object.assign(new Error("Request body must be a JSON object."), {status:400});
   if (JSON.stringify(body).length > MAX_BODY_CHARS) throw Object.assign(new Error("Request is too large. Keep image uploads under 3 MB."), {status:413});
@@ -92,8 +92,9 @@ function headersFor(provider, key) {
 }
 function enforceRateLimit(req,action){
  const rule=RATE_LIMITS[action];if(!rule)return;
+ const realIp=String(req.headers["x-real-ip"]||"").trim();
  const forwarded=String(req.headers["x-forwarded-for"]||"").split(",")[0].trim();
- const ip=forwarded||String(req.headers["x-real-ip"]||"unknown");
+ const ip=realIp||forwarded||"unknown";
  const key=ip+":"+action,now=Date.now(),bucket=(rateBuckets.get(key)||[]).filter(t=>now-t<rule.windowMs);
  if(bucket.length>=rule.max)throw Object.assign(new Error("Too many "+action+" requests. Please wait a minute and try again."),{status:429,code:"BOOKFLOW_RATE_LIMIT"});
  bucket.push(now);rateBuckets.set(key,bucket);
@@ -101,7 +102,7 @@ function enforceRateLimit(req,action){
 }
 function getBookContext(body) {
   const b=body.book&&typeof body.book==="object"?body.book:{};
-  const text=String(b.text||"").slice(0,30000);
+  const text=String(b.text||"").slice(0,250000);
   const settings=b.settings&&typeof b.settings==="object"?b.settings:{};
   return {title:String(b.title||"Untitled book").slice(0,200),author:String(b.author||"").slice(0,200),text,settings};
 }
@@ -127,10 +128,18 @@ function executeTool(name,args,book){
  if(name==="suggest_layout_preset") return presetAdvice(args.presetId,args.reason);
  if(name==="get_relevant_passages"||name==="find_sections"){
    const query=String(args.query||"").trim().toLowerCase(),limit=Math.min(10,Math.max(1,Number(args.maxResults)||6));
+   const stop=new Set(["the","and","for","with","from","that","this","what","where","when","book","chapter","about","please","find","show","tell","mein","ke","ka","ki","aur","hai","hain","kya","ko","se","par"]);
+   const terms=query.split(/[^a-z0-9\u0600-\u06ff]+/i).filter(t=>t.length>2&&!stop.has(t));
    const parts=String(book.text).split(/\n\s*\n/);
-   const matched=parts.map((p,i)=>({index:i+1,text:p.trim()})).filter(p=>p.text&&(!query||p.text.toLowerCase().includes(query)));
-   const hits=(query?matched:matched.slice(0,limit)).slice(0,limit).map(p=>({index:p.index,text:p.text.slice(0,1800)}));
-   return {query:query||"(opening passages)",headings:headings(book.text),matches:hits,totalMatches:matched.length};
+   const scored=parts.map((p,i)=>{
+    const text=p.trim(),lower=text.toLowerCase();
+    const hits=terms.filter(term=>lower.includes(term)).length;
+    const exact=query&&lower.includes(query)?2:0;
+    return {index:i+1,text,score:hits+exact};
+   }).filter(p=>p.text&&(!query||p.score>0));
+   scored.sort((a,b)=>b.score-a.score||a.index-b.index);
+   const hits=scored.slice(0,limit).map(p=>({index:p.index,text:p.text.slice(0,1800),matchScore:p.score}));
+   return {query:query||"(opening passages)",headings:headings(book.text),matches:hits,totalMatches:scored.length,searchTerms:terms};
  }
  if(name==="suggest_text_edits"){
    const edits=Array.isArray(args.edits)?args.edits.slice(0,8):[],validated=[];
