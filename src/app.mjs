@@ -142,12 +142,14 @@ async function exportDocx(){
  sync();const zip=new window.JSZip(),s=readSettings(),d=getPageDimensions(s);
  const content=String($('manuscript').value||'').replace(/\\r\\n?/g,'\\n').split('\\n');
  const paragraphs=content.map(line=>{
-  const clean=line.trim(),heading=/^#\\s+/.test(clean),title=/^##\\s+/.test(clean);
-  const text=clean.replace(/^#{1,3}\\s*/,'');
+  const clean=line.trim();
+  if(clean==='[PAGE BREAK]')return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+  const match=clean.match(/^(#{1,3})\s+(.*)$/),text=match?match[2]:clean;
   if(!text)return '<w:p><w:pPr><w:spacing w:after="80"/></w:pPr></w:p>';
-  const style=heading?(title?'Heading2':'Heading1'):'Normal';
+  const style=match?(match[1].length===1?'Heading1':'Heading2'):'Normal';
+  const alignment=s.textAlign==='center'?'center':s.textAlign==='justify'?'both':'left';
   const run='<w:r><w:t xml:space="preserve">'+xmlEscape(text)+'</w:t></w:r>';
-  return '<w:p><w:pPr><w:pStyle w:val="'+style+'"/></w:pPr>'+run+'</w:p>';
+  return '<w:p><w:pPr><w:pStyle w:val="'+style+'"/><w:jc w:val="'+alignment+'"/></w:pPr>'+run+'</w:p>';
  }).join('');
  const twips=n=>Math.round(n*1440/25.4);
  const pgW=twips(d.width),pgH=twips(d.height);
