@@ -114,7 +114,7 @@ function printReport(book){
  const sw=landscape?Math.max(sheetW,sheetH):Math.min(sheetW,sheetH), sh=landscape?Math.min(sheetW,sheetH):Math.max(sheetW,sheetH);
  const pW=s.orientation==="landscape"?Math.max(pageW,pageH):Math.min(pageW,pageH),pH=s.orientation==="landscape"?Math.min(pageW,pageH):Math.max(pageW,pageH);
  const booklet=s.mode!=="normal", requiredWidth=booklet?2*pW:pW, fit=s.fit||"fit";
- const safeMargin=Math.max(0,Math.min(25,Number(s.safeMargin)||5));
+ const safeValue=Number(s.safeMargin),safeMargin=Number.isFinite(safeValue)?Math.max(0,Math.min(25,safeValue)):5;
  let scale=fit==="actual"?1:fit==="custom"?Math.max(0.1,Math.min(2,(Number(s.customScale)||100)/100)):fit==="safe"?Math.min(1,(sw-2*safeMargin)/requiredWidth,(sh-2*safeMargin)/pH):Math.min(1,sw/requiredWidth,sh/pH);
  const fits=requiredWidth*scale<=sw+0.2&&pH*scale<=sh+0.2, words=wordCount(book.text),lines=String(book.text).split(/\r?\n/).filter(Boolean).length;
  return {finishedPageMm:[pW,pH],physicalSheetMm:[sw,sh],requiredSpreadMm:[requiredWidth,pH],fit:fits,scalePercent:Math.round(scale*10000)/100,needsScaling:scale<0.999,booklet,safeMarginMm:safeMargin,innerMarginMm:s.innerMargin||0,gutterMm:s.gutter||0,words,approxLines:lines,warning:!fits?"This setup does not fit the selected physical sheet at the chosen scale.":fit==="safe"?"The spread is scaled to the printer-safe edge allowance. Confirm the real printable area in the driver.":scale<0.999?"This page size needs proportional scaling to fit the selected physical sheet.":booklet?"Mathematical two-up fit only; check actual non-printable printer margins.":"Normal reader-order page size fits the selected physical sheet; the printer driver may scale or clip it."};
@@ -216,7 +216,7 @@ async function generateImage(body) {
  const provider=String(body.provider||"agnes"),prompt=String(body.prompt||"").trim();
  if(!prompt) throw Object.assign(new Error("Write an image prompt first."),{status:400});
  if(prompt.length>7000) throw Object.assign(new Error("Image prompt is too long (7,000 character limit)."),{status:413});
- const size=["1K","2K","3K","4K"].includes(body.size)?body.size:"1K", ratio=["1:1","3:4","4:3","16:9","9:16","2:3","3:2","21:9"].includes(body.ratio)?body.ratio:"1:1";
+ const size=["512","1K","2K","3K","4K"].includes(body.size)?body.size:"1K", ratio=["1:1","3:4","4:3","16:9","9:16","2:3","3:2","21:9"].includes(body.ratio)?body.ratio:"1:1";
  if(provider==="agnes"){
   const key=process.env.AGNES_API_KEY;
   if(!key) throw Object.assign(new Error("Add AGNES_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
@@ -232,7 +232,7 @@ async function generateImage(body) {
   const info=providerInfo("openrouter");if(!info.key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
   const model=String(body.model||"").trim();if(!model)throw Object.assign(new Error("Choose an OpenRouter image model from Load models."),{status:400});
   const refs=Array.isArray(body.referenceImages)?body.referenceImages.filter(x=>typeof x==="string"&&(/^https:\/\/|^data:image\/(?:png|jpeg|webp);base64,/i.test(x))).slice(0,4):[];
-  const openRouterResolution=["4K","3K"].includes(size)?"2K":size;const payload={model,prompt,aspect_ratio:ratio,resolution:openRouterResolution,n:1};
+  const openRouterResolution=["4K","3K"].includes(size)?"2K":size;const payload={model,prompt,aspect_ratio:ratio,resolution:openRouterResolution==="3K"?"2K":openRouterResolution,n:1};
   if(refs.length)payload.input_references=refs.map(url=>({type:"image_url",image_url:{url}}));
   const result=await requestJSON(OPENROUTER_BASE+"/images",{method:"POST",headers:headersFor("openrouter",info.key),body:JSON.stringify(payload)},48000);
   const images=(Array.isArray(result.data)?result.data:[]).map(x=>({url:x.url||null,b64:x.b64_json||null,mediaType:x.media_type||"image/png",revisedPrompt:x.revised_prompt||null})).filter(x=>x.url||x.b64);
