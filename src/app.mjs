@@ -7,7 +7,7 @@ function readSettings(){return {pageSize:$('pagePreset').value,pageW:+$('pageW')
 function sync(){const p=active();if(!p)return;p.title=$('title').value.trim()||'Untitled book';p.author=$('author').value.trim();p.text=$('manuscript').value;p.settings={...p.settings,...fromUI()};p.updated=Date.now();}
 function fromUI(){return {pagePreset:$('pagePreset').value,pageW:+$('pageW').value,pageH:+$('pageH').value,orientation:$('orientation').value,fontSize:+$('fontSize').value,columns:+$('columns').value,lineSpacing:+$('lineSpacing').value,align:$('align').value,topMargin:+$('topMargin').value,bottomMargin:+$('bottomMargin').value,innerMargin:+$('innerMargin').value,outerMargin:+$('outerMargin').value,gutter:+$('gutter').value,pageNumbers:$('pageNumbers').checked,chapterStart:$('chapterStart').checked,sheetPreset:$('sheetPreset').value,sheetW:+$('sheetW').value,sheetH:+$('sheetH').value,sheetOrientation:$('sheetOrientation').value,printer:$('printer').value,hpModel:$('hpModel')?.value||'unknown',mode:$('mode').value,signature:+$('signature').value,fit:$('fit').value,safeMargin:+$('safeMargin').value,customScale:+$('customScale').value,flip:$('flip').value,backOrder:$('backOrder').value,marks:$('marks').checked};}
 const DB_NAME='BookFlowStudioDB',DB_VERSION=1;
-let dbPromise=null,saveTimer=null,lastStorageError='';
+let dbPromise=null,saveTimer=null,lastStorageError='',fullSaveNeeded=true;const deletedProjectIds=new Set();
 function openBookDB(){
  if(dbPromise)return dbPromise;
  dbPromise=new Promise((resolve,reject)=>{
@@ -19,14 +19,20 @@ function openBookDB(){
  return dbPromise;
 }
 async function persistProjects(){
- const db=await openBookDB();
+ const db=await openBookDB(),saveAll=fullSaveNeeded,removed=[...deletedProjectIds],current=active();
  await new Promise((resolve,reject)=>{
   const tx=db.transaction(['projects','meta'],'readwrite'),store=tx.objectStore('projects'),meta=tx.objectStore('meta');
-  store.clear();for(const p of projects)store.put(p);meta.put(activeId,'activeId');
-  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Could not save books.'));tx.onabort=()=>reject(tx.error||new Error('Book save was interrupted.'));
+  if(saveAll){store.clear();for(const p of projects)store.put(p);}
+  else if(current)store.put(current);
+  for(const id of removed)store.delete(id);
+  meta.put(activeId,'activeId');
+  tx.oncomplete=()=>{if(saveAll)fullSaveNeeded=false;for(const id of removed)deletedProjectIds.delete(id);resolve();};
+  tx.onerror=()=>reject(tx.error||new Error('Could not save books.'));
+  tx.onabort=()=>reject(tx.error||new Error('Book save was interrupted.'));
  });
 }
-function store(immediate=false){
+function store(immediate=false,fullSave=false){
+ if(fullSave)fullSaveNeeded=true;
  const index={activeId,projectIndex:projects.map(p=>({id:p.id,title:p.title||'Untitled book',updated:p.updated||Date.now(),words:wordCount(p.text)}))};
  try{localStorage.setItem(KEY,JSON.stringify(index));}catch(e){lastStorageError=e.message||'Browser index storage is full.';}
  if(saveTimer)clearTimeout(saveTimer);
@@ -35,7 +41,7 @@ function store(immediate=false){
    try{localStorage.setItem(KEY,JSON.stringify({projects,activeId}));$('saved').textContent='Saved in browser storage (fallback)';}
    catch{$('saved').textContent='Save failed — export a backup';}
  }};
- if(immediate)void save();else saveTimer=setTimeout(save,350);
+ if(immediate)void save();else saveTimer=setTimeout(save,500);
 }
 async function loadStoredProjects(){
  try{
@@ -44,13 +50,13 @@ async function loadStoredProjects(){
    const tx=db.transaction(['projects','meta'],'readonly'),all=tx.objectStore('projects').getAll(),active=tx.objectStore('meta').get('activeId');
    tx.oncomplete=()=>resolve({projects:all.result||[],activeId:active.result||''});tx.onerror=()=>reject(tx.error);
   });
-  if(saved.projects.length)return saved;
+  if(saved.projects.length)return {...saved,fromDB:true};
  }catch(e){lastStorageError=e.message||'IndexedDB unavailable';}
  try{
   const legacy=JSON.parse(localStorage.getItem(KEY)||'{}');
-  if(Array.isArray(legacy.projects))return {projects:legacy.projects,activeId:legacy.activeId||''};
+  if(Array.isArray(legacy.projects))return {projects:legacy.projects,activeId:legacy.activeId||'',fromDB:false};
  }catch{}
- return {projects:[],activeId:''};
+ return {projects:[],activeId:'',fromDB:false};
 }
 function wordCount(s){return (String(s).trim().match(/\S+/g)||[]).length;}
 function filename(suffix,ext='pdf'){let x=($('title').value||'book').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'book';return x+'-'+suffix+'.'+ext;}
@@ -70,7 +76,7 @@ function renderProjects(){
   const duplicate=document.createElement('button');duplicate.type='button';duplicate.className='project-icon';duplicate.title='Duplicate book';duplicate.setAttribute('aria-label','Duplicate '+(p.title||'book'));duplicate.textContent='⧉';
   duplicate.onclick=()=>{sync();const copy=JSON.parse(JSON.stringify(p));copy.id='book-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);copy.title=(p.title||'Untitled book')+' — Copy';copy.updated=Date.now();projects.unshift(copy);activeId=copy.id;loadActive();store(true);};
   const remove=document.createElement('button');remove.type='button';remove.className='project-icon danger';remove.title='Delete book';remove.setAttribute('aria-label','Delete '+(p.title||'book'));remove.textContent='×';
-  remove.onclick=()=>{if(!confirm('Delete "'+(p.title||'Untitled book')+'"? This cannot be undone. Export a backup first if you need it.'))return;projects=projects.filter(x=>x.id!==p.id);if(!projects.length){const fresh=def();fresh.title='My Book';projects=[fresh];}if(activeId===p.id)activeId=projects[0].id;loadActive();store(true);};
+  remove.onclick=()=>{if(!confirm('Delete "'+(p.title||'Untitled book')+'"? This cannot be undone. Export a backup first if you need it.'))return;deletedProjectIds.add(p.id);projects=projects.filter(x=>x.id!==p.id);if(!projects.length){const fresh=def();fresh.title='My Book';projects=[fresh];}if(activeId===p.id)activeId=projects[0].id;loadActive();store(true);};
   tools.append(duplicate,remove);row.append(select,tools);box.append(row);
  }
 }
@@ -158,7 +164,7 @@ async function exportDocx(){
 $('wordExport')?.addEventListener('click',()=>exportDocx().catch(e=>{status(e.message,'warn');alert(e.message);}));
 
 function backup(){sync();store();download(new Blob([JSON.stringify({format:'BookFlowStudioProject',version:2,projects,activeId},null,2)],{type:'application/json'}),filename('backup','json'),'application/json');}
-async function importBackup(file){try{const d=JSON.parse(await file.text());if(d.format!=='BookFlowStudioProject'||!Array.isArray(d.projects))throw Error('Not a BookFlow Studio backup.');const val=d.projects.filter(p=>p&&typeof p.id==='string'&&typeof p.text==='string'&&p.settings);if(!val.length)throw Error('No valid projects in this backup.');projects=val;activeId=projects.some(p=>p.id===d.activeId)?d.activeId:projects[0].id;store();loadActive();status('Project backup imported.','good');}catch(e){alert(e.message);}}
+async function importBackup(file){try{const d=JSON.parse(await file.text());if(d.format!=='BookFlowStudioProject'||!Array.isArray(d.projects))throw Error('Not a BookFlow Studio backup.');const val=d.projects.filter(p=>p&&typeof p.id==='string'&&typeof p.text==='string'&&p.settings);if(!val.length)throw Error('No valid projects in this backup.');projects=val;activeId=projects.some(p=>p.id===d.activeId)?d.activeId:projects[0].id;deletedProjectIds.clear();store(true,true);loadActive();status('Project backup imported.','good');}catch(e){alert(e.message);}}
 $('projectSearch')?.addEventListener('input',renderProjects);
 $('newBook').onclick=$('newBook2').onclick=newBook;$('save').onclick=()=>{sync();store();renderProjects();status('Saved in this browser. Export a backup for safekeeping.','good');};$('readingPdf').onclick=exportReader;$('bookletPdf').onclick=()=>exportImposed('all');$('frontsPdf').onclick=()=>exportImposed('fronts');$('backsPdf').onclick=()=>exportImposed('backs');$('singlePdf').onclick=()=>exportImposed('single');$('testSheet').onclick=testSheet;$('backup').onclick=backup;$('importBackup').onclick=()=>$('backupFile').click();$('backupFile').onchange=async e=>{if(e.target.files[0])await importBackup(e.target.files[0]);e.target.value='';};
 async function extractImportedText(file){
@@ -205,7 +211,7 @@ for(const id of ids)$(id).addEventListener('change',()=>{if(id==='pagePreset'&&P
 window.addEventListener('resize',renderReader);window.addEventListener('beforeunload',()=>{sync();store(true);});
 window.addEventListener('pagehide',()=>{sync();store(true);});
 async function boot(){
- const saved=await loadStoredProjects();projects=Array.isArray(saved.projects)?saved.projects:[];activeId=saved.activeId||'';
+ const saved=await loadStoredProjects();projects=Array.isArray(saved.projects)?saved.projects:[];activeId=saved.activeId||'';fullSaveNeeded=!saved.fromDB;
  if(!projects.length){const p=def();p.title='My Book';projects=[p];activeId=p.id;}
  if(!projects.some(p=>p.id===activeId))activeId=projects[0].id;
  loadActive();store(true);
