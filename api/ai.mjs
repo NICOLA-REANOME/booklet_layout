@@ -221,12 +221,12 @@ async function generateImage(body) {
   const key=process.env.AGNES_API_KEY;
   if(!key) throw Object.assign(new Error("Add AGNES_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
   const refs=Array.isArray(body.referenceImages)?body.referenceImages.filter(x=>typeof x==="string"&&/^https:\/\/|^data:image\//i.test(x)).slice(0,4):[];
-  const payload={model:String(body.model||"agnes-image-2.5-flash"),prompt,size,ratio,n:1,extra_body:{response_format:"url"}};
+  const agnesSize=size==="512"?"1K":size;const payload={model:String(body.model||"agnes-image-2.5-flash"),prompt,size:agnesSize,ratio,n:1,extra_body:{response_format:"url"}};
   if(refs.length) payload.extra_body.image=refs;
   const result=await requestJSON(AGNES_BASE+"/images/generations",{method:"POST",headers:headersFor("agnes",key),body:JSON.stringify(payload)},48000);
   const images=(result.data||[]).map(x=>({url:x.url||null,b64:x.b64_json||null,revisedPrompt:x.revised_prompt||null})).filter(x=>x.url||x.b64);
   if(!images.length) throw Object.assign(new Error("Image provider returned no usable image URL or base64 result."),{status:502});
-  return {ok:true,provider,model:payload.model,images,rawStatus:result.status||null};
+  return {ok:true,provider,model:payload.model,resolution:agnesSize,images,rawStatus:result.status||null};
  }
  if(provider==="openrouter"){
   const info=providerInfo("openrouter");if(!info.key)throw Object.assign(new Error("Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
