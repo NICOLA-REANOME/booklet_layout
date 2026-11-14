@@ -430,7 +430,66 @@ $('generateImage')?.addEventListener('click',async()=>{
  button.disabled=true;button.textContent='Generating…';$('imageStatus').textContent='Sending image request to '+provider+'…';$('imageResults').replaceChildren();
  try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'image',provider,model:$('imageModel').value.trim(),prompt,size:$('imageSize').value,ratio:$('imageRatio').value,referenceImages:attachedReferenceData?[attachedReferenceData]:[]})});const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Image request failed');
  for(const im of (d.images||[])){const card=document.createElement('div');card.className='image-result';const img=document.createElement('img');img.alt='AI-generated image';img.src=imageDataSource(im);const a=document.createElement('a');a.href=img.src;a.target='_blank';a.rel='noreferrer';a.textContent='Open / save image ↗';card.append(img,a);$('imageResults').append(card);}
- if(!d.images?.length)throw Error('No image output was returned.');$('imageStatus').textContent='Image ready · '+d.provider+' / '+d.model+' · review resolution before printing.';
+ if(!d.images?.length)throw Error('No image output was returned.');$('imageStatus').textContent='Image ready · '+d.provider+' / '+d.model+(d.resolution?' · actual resolution '+d.resolution:'')+(d.usage?.cost!=null?' · cost 
+ }catch(e){$('imageStatus').textContent='Image generation failed: '+e.message;$('imageResults').textContent='No image was returned.';}
+ finally{button.disabled=false;button.textContent='Generate image';}
+});
+$('videoProvider')?.addEventListener('change',()=>{
+ const provider=$('videoProvider').value;
+ $('videoModel').value=provider==='agnes'?'agnes-video-2.5-flash':'';
+ $('videoStatus').textContent=provider==='agnes'?'Agnes Video 2.5 Flash default selected.':'Load OpenRouter video models to see current IDs, supported durations and resolutions.';
+ $('videoSize').value=provider==='agnes'?'720P':'720p';
+});
+$('loadVideoModels')?.addEventListener('click',async()=>{
+ const provider=$('videoProvider').value;
+ const models=await loadProviderModels(provider,'video','videoModelList','videoStatus');
+ if(models.length&&!models.some(m=>m.id===$('videoModel').value))$('videoModel').value=models[0].id;
+});
+$('createVideo')?.addEventListener('click',async()=>{
+ const button=$('createVideo'),prompt=$('videoPrompt').value.trim(),provider=$('videoProvider').value,model=$('videoModel').value.trim();
+ if(!prompt){alert('Write a video prompt first.');return;}
+ if(!model){alert('Load models and choose a video model ID first.');return;}
+ button.disabled=true;button.textContent='Submitting…';$('videoStatus').textContent='Submitting asynchronous generation job through '+provider+'…';
+ try{
+  const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'video',provider,model,prompt,seconds:$('videoSeconds').value,size:$('videoSize').value,ratio:$('videoRatio').value,generateAudio:$('videoAudio').checked})});
+  const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Video request failed');
+  $('videoId').value=d.videoId||'';lastVideoModel=d.model;
+  $('videoStatus').textContent='Job created · '+provider+' · '+(d.status||'pending')+(d.videoId?' · ID saved above':' · provider did not return a job ID')+(d.usage?.cost!=null?' · reported cost $'+d.usage.cost:'');
+  $('videoResult').replaceChildren();const pre=document.createElement('pre');pre.className='small';pre.style.whiteSpace='pre-wrap';pre.style.overflowWrap='anywhere';pre.textContent=JSON.stringify(d.raw||d,null,2);$('videoResult').append(pre);
+ }catch(e){$('videoStatus').textContent='Video request failed: '+e.message;}
+ finally{button.disabled=false;button.textContent='Start video generation';}
+});
+$('pollVideo')?.addEventListener('click',async()=>{
+ const id=$('videoId').value.trim(),provider=$('videoProvider').value,model=$('videoModel').value.trim();
+ if(!id){alert('Create a video job or enter the returned job/video ID first.');return;}
+ $('pollVideo').disabled=true;$('videoStatus').textContent='Checking '+provider+' job…';
+ try{
+  const res=await fetch('/api/ai?action=video-status&provider='+encodeURIComponent(provider)+'&video_id='+encodeURIComponent(id)+'&model='+encodeURIComponent(model)),d=await res.json();
+  if(!res.ok||!d.ok)throw Error(d.error||'Status request failed');
+  const r=d.result||{};$('videoStatus').textContent='Video status: '+(r.status||'provider response received')+(r.error?' · '+r.error:'');
+  $('videoResult').replaceChildren();
+  const videoUrl=(r.url||r.unsigned_urls?.[0]||r.data?.url||"");
+  if(typeof videoUrl==="string"&&videoUrl.startsWith("https://")){
+   const v=document.createElement('video');v.src=videoUrl;v.controls=true;v.playsInline=true;v.style.width='100%';v.style.maxHeight='420px';$('videoResult').append(v);
+   const a=document.createElement('a');a.href=videoUrl;a.target='_blank';a.rel='noreferrer';a.textContent='Open / save generated video ↗';a.style.display='block';a.style.marginTop='10px';$('videoResult').append(a);
+  } else {const pre=document.createElement('pre');pre.className='small';pre.style.whiteSpace='pre-wrap';pre.style.overflowWrap='anywhere';pre.textContent=JSON.stringify(r,null,2);$('videoResult').append(pre);}
+ }catch(e){$('videoStatus').textContent='Video status check failed: '+e.message;}
+ finally{$('pollVideo').disabled=false;}
+});
+$('loadEmbeddingModels')?.addEventListener('click',async()=>{
+ const models=await loadProviderModels('openrouter','embeddings','embeddingModelList','embeddingStatus');
+ if(models.length&&!models.some(m=>m.id===$('embeddingModel').value))$('embeddingModel').value=models[0].id;
+});
+$('testEmbedding')?.addEventListener('click',async()=>{
+ const text=$('embeddingText').value.trim(),model=$('embeddingModel').value.trim();if(!text||!model){alert('Enter an embedding model ID and a short text sample.');return;}
+ $('testEmbedding').disabled=true;$('embeddingStatus').textContent='Calling OpenRouter embeddings…';
+ try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'embeddings',model,input:text})});const d=await res.json();if(!res.ok||!d.data)throw Error(d.error||'Embedding request failed');$('embeddingStatus').textContent='Success · '+d.data.length+' embedding(s) · vector size '+(d.data[0]?.embedding?.length||'unknown')+' · tokens '+(d.usage?.total_tokens??'unknown')+'.';}
+ catch(e){$('embeddingStatus').textContent='Embedding test failed: '+e.message;}
+ finally{$('testEmbedding').disabled=false;}
+});
+refreshAIStatus();updateAIContext();
+
++d.usage.cost:'')+' · review before print.';
  }catch(e){$('imageStatus').textContent='Image generation failed: '+e.message;$('imageResults').textContent='No image was returned.';}
  finally{button.disabled=false;button.textContent='Generate image';}
 });
