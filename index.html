@@ -84,11 +84,30 @@
 .setting-inner .sect{margin-top:9px}
 .presetboard{box-shadow:0 3px 12px #3159b708}
 .preset-info{border-left:3px solid #8da8ff;padding:7px 9px;background:#fff;border-radius:0 7px 7px 0}
+
+.project-search{margin:10px 0 6px}
+.project-search input{font-size:12px}
+.project-row{display:flex;align-items:center;gap:4px;border-radius:9px;padding-right:4px}
+.project-row.active{background:#edf2ff;border:1px solid #cbd8ff}
+.project-row .project{flex:1;min-width:0;border:0;background:transparent;text-align:left}
+.project-row .project.active{background:transparent}
+.project-row.active .project{color:#204fc8}
+.project-actions{display:flex;gap:2px;opacity:.55;transition:opacity .15s}
+.project-row:hover .project-actions,.project-row:focus-within .project-actions{opacity:1}
+.project-icon{width:27px;height:27px;min-width:27px;padding:0;border:0;background:transparent;border-radius:7px;font-size:15px;color:#65728a}
+.project-icon:hover{background:#e7edfc;color:#234d9d}
+.project-icon.danger:hover{background:#fff0f0;color:#b42318}
+.edit-proposal{border-top:1px solid var(--line);padding:10px 0;margin-top:8px}
+.edit-proposal>b{font-size:12px}
+.edit-before,.edit-after{white-space:pre-wrap;overflow-wrap:anywhere;border-radius:8px;padding:9px;margin:6px 0;font:11px/1.5 ui-monospace,Consolas,monospace}
+.edit-before{background:#fff2f0;color:#823e35;border:1px solid #f3d4d0}
+.edit-after{background:#edf8f2;color:#1f6545;border:1px solid #d1ecdc}
+@media(max-width:740px){.project-actions{opacity:1}.actions #wordExport{display:none}}
 </style></head><body>
-<header class="top"><div class="logo">B</div><div class="brand">BookFlow Studio<small>Book layout & print manager</small></div><div class="actions"><button id="newBook">＋ New book</button><button id="save">Save</button><button class="primary" id="readingPdf">Download PDF</button></div></header>
+<header class="top"><div class="logo">B</div><div class="brand">BookFlow Studio<small>Book layout & print manager</small></div><div class="actions"><button id="newBook">＋ New book</button><button id="save">Save</button><button id="wordExport">Export Word</button><button class="primary" id="readingPdf">Download PDF</button></div></header>
 <main class="shell"><div class="workflow" role="navigation" aria-label="Book workflow"><button class="step on" data-jump="editorpanel">01&nbsp; Write</button><button class="step" data-jump="presetboard">02&nbsp; Design</button><button class="step" data-jump="print-section">03&nbsp; Print</button><button class="step" data-jump="aiStudio">04&nbsp; AI Studio</button><span class="statuspill" id="saved">Saved locally</span></div>
 <div class="layout">
-<aside class="panel sidebar"><div class="head">My books <button id="newBook2">＋</button></div><div class="body"><div id="projectList" class="projectlist"></div><div class="sect">Import manuscript</div><label class="small">Text / Markdown<input id="textImport" class="file" type="file" accept=".txt,.md,.markdown"></label><div class="note info">DOCX/PDF import and OCR are not yet available. Copy the text and paste it into the editor.</div><div class="stats"><div class="stat"><b id="words">0</b><small>Words</small></div><div class="stat"><b id="chars">0</b><small>Characters</small></div><div class="stat"><b id="pages">1</b><small>Est. pages</small></div></div><div class="sect">Project backup</div><button id="backup" class="wide">Export backup (.json)</button><button id="importBackup" class="wide mt">Import backup</button><input id="backupFile" class="hidden" type="file" accept=".json"><p class="small muted">Projects stay in this browser. Back up regularly; project data does not sync across devices.</p></div></aside>
+<aside class="panel sidebar"><div class="head">My books <button id="newBook2">＋</button></div><div class="body"><div class="field project-search"><label for="projectSearch">Find a book</label><input id="projectSearch" type="search" placeholder="Search title or author…"></div><div id="projectList" class="projectlist"></div><div class="sect">Import manuscript</div><label class="small">TXT · Markdown · Word · PDF<input id="textImport" class="file" type="file" accept=".txt,.md,.markdown,.docx,.pdf"></label><div class="note info">Word and text-based PDF files can be imported. Scanned image-only PDFs still need OCR outside this version.</div><div class="stats"><div class="stat"><b id="words">0</b><small>Words</small></div><div class="stat"><b id="chars">0</b><small>Characters</small></div><div class="stat"><b id="pages">1</b><small>Est. pages</small></div></div><div class="sect">Project backup</div><button id="backup" class="wide">Export backup (.json)</button><button id="importBackup" class="wide mt">Import backup</button><input id="backupFile" class="hidden" type="file" accept=".json"><p class="small muted">Books are stored in this browser using local database storage. Export a backup regularly; books do not sync to other devices.</p></div></aside>
 <section class="panel editorpanel"><div class="head">Manuscript editor <span class="statuspill">Flowing layout</span></div><div class="toolbar"><button id="undo">↶ Undo</button><button id="redo">↷ Redo</button><select id="textStyle"><option value="body">Body</option><option value="title">Title</option><option value="heading">Chapter heading</option></select><button id="pageBreak">Insert page break</button></div><label class="sr" for="manuscript">Manuscript content</label><textarea id="manuscript" class="manuscript" spellcheck="true" placeholder="Paste your manuscript here. Use # Chapter title on its own line to start a chapter."></textarea><div class="editorfoot"><span id="editStatus">Autosaves locally</span><span id="pageIndex">Page 1 / 1</span></div><div class="previewheader"><b>Preview</b><div class="tabs"><button class="tab active" data-view="reader">Reader page</button><button class="tab" data-view="sheets">Booklet sheets</button><button class="tab" data-view="checks">Print checks</button></div></div><div id="readerView"><div class="preview"><div class="pagenav"><button id="prev">← Prev</button><span id="pageLabel">Page 1 of 1</span><button id="next">Next →</button></div><div id="paper" class="paper"><div id="papertext" class="papertext"></div><span id="pagenum" class="pagenum"></span></div><div class="small muted">Preview is approximate; always open and inspect the exported PDF.</div></div></div><div id="sheetsView" class="body hidden"><div class="note info" id="sheetSummary"></div><div class="sheetlist" id="sheetList"></div></div><div id="checksView" class="body hidden"><div id="checks"></div><button class="primary wide mt" id="testSheet">Download duplex test sheet</button></div></section>
 <aside class="panel settings"><div class="head">Page & print setup</div><div class="body">
 <div class="presetboard" id="presetboard">
@@ -201,4 +220,4 @@
   </div>
 </section>
 <div class="footer">BookFlow Studio · Personal, local-first workspace · Back up projects regularly</div></main>
-<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script><script type="module" src="/src/app.mjs"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script><script src="https://cdn.jsdelivr.net/npm/mammoth@1.9.1/mammoth.browser.min.js"></script><script type="module" src="/src/app.mjs"></script></body></html>
