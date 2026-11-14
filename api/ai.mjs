@@ -114,9 +114,10 @@ function printReport(book){
  const sw=landscape?Math.max(sheetW,sheetH):Math.min(sheetW,sheetH), sh=landscape?Math.min(sheetW,sheetH):Math.max(sheetW,sheetH);
  const pW=s.orientation==="landscape"?Math.max(pageW,pageH):Math.min(pageW,pageH),pH=s.orientation==="landscape"?Math.min(pageW,pageH):Math.max(pageW,pageH);
  const booklet=s.mode!=="normal", requiredWidth=booklet?2*pW:pW, fit=s.fit||"fit";
- let scale=fit==="actual"?1:fit==="custom"?Math.max(0.1,Math.min(2,(Number(s.customScale)||100)/100)):Math.min(1,sw/requiredWidth,sh/pH);
+ const safeMargin=Math.max(0,Math.min(25,Number(s.safeMargin)||5));
+ let scale=fit==="actual"?1:fit==="custom"?Math.max(0.1,Math.min(2,(Number(s.customScale)||100)/100)):fit==="safe"?Math.min(1,(sw-2*safeMargin)/requiredWidth,(sh-2*safeMargin)/pH):Math.min(1,sw/requiredWidth,sh/pH);
  const fits=requiredWidth*scale<=sw+0.2&&pH*scale<=sh+0.2, words=wordCount(book.text),lines=String(book.text).split(/\r?\n/).filter(Boolean).length;
- return {finishedPageMm:[pW,pH],physicalSheetMm:[sw,sh],requiredSpreadMm:[requiredWidth,pH],fit:fits,scalePercent:Math.round(scale*10000)/100,needsScaling:scale<0.999,booklet,innerMarginMm:s.innerMargin||0,gutterMm:s.gutter||0,words,approxLines:lines,warning:!fits?"This setup does not fit the selected physical sheet at the chosen scale.":scale<0.999?"This page size needs proportional scaling to fit the selected physical sheet.":booklet?"The two-up geometry fits the selected physical sheet.":"Normal reader-order page size fits the selected physical sheet."};
+ return {finishedPageMm:[pW,pH],physicalSheetMm:[sw,sh],requiredSpreadMm:[requiredWidth,pH],fit:fits,scalePercent:Math.round(scale*10000)/100,needsScaling:scale<0.999,booklet,safeMarginMm:safeMargin,innerMarginMm:s.innerMargin||0,gutterMm:s.gutter||0,words,approxLines:lines,warning:!fits?"This setup does not fit the selected physical sheet at the chosen scale.":fit==="safe"?"The spread is scaled to the printer-safe edge allowance. Confirm the real printable area in the driver.":scale<0.999?"This page size needs proportional scaling to fit the selected physical sheet.":booklet?"Mathematical two-up fit only; check actual non-printable printer margins.":"Normal reader-order page size fits the selected physical sheet; the printer driver may scale or clip it."};
 }
 function presetAdvice(presetId,reason){
  const p=PRESETS[presetId]; if(!p)return {error:"Unknown preset"};
