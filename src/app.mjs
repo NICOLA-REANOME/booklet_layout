@@ -430,7 +430,8 @@ $('generateImage')?.addEventListener('click',async()=>{
  button.disabled=true;button.textContent='Generating…';$('imageStatus').textContent='Sending image request to '+provider+'…';$('imageResults').replaceChildren();
  try{const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'image',provider,model:$('imageModel').value.trim(),prompt,size:$('imageSize').value,ratio:$('imageRatio').value,referenceImages:attachedReferenceData?[attachedReferenceData]:[]})});const d=await res.json();if(!res.ok||!d.ok)throw Error(d.error||'Image request failed');
  for(const im of (d.images||[])){const card=document.createElement('div');card.className='image-result';const img=document.createElement('img');img.alt='AI-generated image';img.src=imageDataSource(im);const a=document.createElement('a');a.href=img.src;a.target='_blank';a.rel='noreferrer';a.textContent='Open / save image ↗';card.append(img,a);$('imageResults').append(card);}
- if(!d.images?.length)throw Error('No image output was returned.');$('imageStatus').textContent='Image ready · '+d.provider+' / '+d.model+(d.resolution?' · actual resolution '+d.resolution:'')+(d.usage?.cost!=null?' · cost 
+ if(!d.images?.length)throw Error('No image output was returned.');
+ $('imageStatus').textContent='Image ready · '+d.provider+' / '+d.model+(d.resolution?' · actual resolution '+d.resolution:'')+(d.usage?.cost!=null?' · cost $'+d.usage.cost:'')+' · review before print.';
  }catch(e){$('imageStatus').textContent='Image generation failed: '+e.message;$('imageResults').textContent='No image was returned.';}
  finally{button.disabled=false;button.textContent='Generate image';}
 });
