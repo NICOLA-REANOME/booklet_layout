@@ -99,12 +99,12 @@ For all printers, use the app's duplex test sheet before printing an entire book
 
 - OCR for scanned/image-only PDFs is not implemented.
 - DOCX import currently extracts manuscript text only; advanced Word styling, tracked changes, tables and embedded images are not preserved.
-- DOCX export creates an editable text document with basic title/heading styling; it does not yet include embedded images, headers/footers, footnotes, automatic contents, or print-production marks.
-- Image placement/anchoring within the manuscript is not implemented yet.
+- DOCX export now embeds manuscript-anchored images, Heading 1–3 styles, configurable headers/footers, native Word footnotes and an updateable Table of Contents field. In Word, update the TOC field to populate page numbers.
+- Add an image at the manuscript cursor from the toolbar; the image asset is saved with the local project and included in reader-order PDF and Word export. Image blocks support left/centre/right alignment and 60/80/100% column widths.
 - Text pagination/preview use an approximate layout model; exported PDFs must be opened and proofread.
 - The safe-edge value is a user-adjustable planning assumption, not a device-specific measurement. Confirm the actual printable area and feed/duplex path in each printer driver and run a test sheet.
 - Urdu/Arabic PDF text is blocked until an appropriate embedded Unicode font and shaping are integrated.
-- Full mixed section sizes/orientations, advanced headers/footers, footnotes, automatic table of contents, bleed/crop production features and persistent semantic vector storage are not yet implemented.
+- PDF output still uses approximate text/image layout. Word is recommended for TOC refresh and native footnote pagination. Full mixed section sizes/orientations, bleed/crop features and persistent semantic vector storage are not included.\n- Optional Book Assistant semantic retrieval calls OpenRouter embeddings per question to retrieve matching manuscript passages. It does not store a cloud index; select an embeddings model in Semantic tools and enable the Book Assistant checkbox.
 - Video generation and AI providers cannot be live-tested without your API keys; key presence is shown by the app, but the provider may still reject a model or quota.
 - Vercel project `bookflow-studio-git` is linked to this repository on `main`; pushes trigger production deployments and the GitHub Actions test workflow.
 

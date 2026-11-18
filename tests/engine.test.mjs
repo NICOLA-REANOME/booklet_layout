@@ -115,6 +115,6 @@ test('printer-safe fit mode keeps the imposed spread inside a 5 mm edge allowanc
   assert.equal(g.fits,true);
   assert.equal(g.safeAreaFit,true);
 });
-test('invalid printer-safe edge allowances are rejected', () => {
+test('anchored image markers occupy layout space and preserve alignment and captions', () => {\n const pages=paginateManuscript('Before image.\n[[IMAGE:cover-1]]\nAfter image.',{pageWidthPt:400,pageHeightPt:600,fontSize:10,topMarginPt:30,bottomMarginPt:30,leftMarginPt:30,rightMarginPt:30,measureText:t=>t.length*4,getImageInfo:id=>id==='cover-1'?{aspectRatio:2,widthPercent:60,align:'right',caption:'Diagram 1'}:null});\n const image=pages.flatMap(p=>p.columns.flat()).find(l=>l.kind==='image');\n assert.ok(image);assert.equal(image.imageId,'cover-1');assert.equal(image.imageAlign,'right');assert.equal(image.caption,'Diagram 1');assert.ok(image.imageHeightPt>0);assert.ok(image.imageWidthPt>0);\n});\n\ntest('invalid printer-safe edge allowances are rejected', () => {
   assert.throws(() => calculateImpositionGeometry({pageW:148,pageH:210,sheetW:297,sheetH:210,fitMode:'safe',safeEdgeMarginMm:110}),/edge margin/);
 });

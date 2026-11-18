@@ -62,27 +62,17 @@ function wrapParagraph(text,maxWidth,measure){
  if(line)out.push(line);return out;
 }
 export function paginateManuscript(text,options={}){
- const W=Number(options.pageWidthPt??419.53),H=Number(options.pageHeightPt??595.28),fs=Number(options.fontSize??11),spacing=Number(options.lineSpacing??1.4);
- const top=Number(options.topMarginPt??51),bottom=Number(options.bottomMarginPt??51),left=Number(options.leftMarginPt??51),right=Number(options.rightMarginPt??40);
- const cols=Number(options.columns??1),gap=Number(options.columnGapPt??18),chapterNewPage=options.chapterNewPage!==false;
+ const W=Number(options.pageWidthPt??419.53),H=Number(options.pageHeightPt??595.28),fs=Number(options.fontSize??11),spacing=Number(options.lineSpacing??1.4),top=Number(options.topMarginPt??51),bottom=Number(options.bottomMarginPt??51),left=Number(options.leftMarginPt??51),right=Number(options.rightMarginPt??40),cols=Number(options.columns??1),gap=Number(options.columnGapPt??18),chapterNewPage=options.chapterNewPage!==false;
  const measure=typeof options.measureText==='function'?options.measureText:(t,k='body')=>t.length*fs*(k==='heading'?.56:.49);
  if([W,H,fs,spacing,top,bottom,left,right,cols,gap].some(n=>!Number.isFinite(n))||W<=0||H<=0||fs<=0||spacing<.8||top<0||bottom<0||left<0||right<0||!Number.isInteger(cols)||cols<1||cols>4||gap<0)throw new RangeError('Invalid pagination settings.');
  const usableW=W-left-right-gap*(cols-1),usableH=H-top-bottom;if(usableW<=0||usableH<=fs)throw new RangeError('Margins leave no usable text area.');
  const colW=usableW/cols,lineH=fs*spacing,pages=[];let page,col=0,y=0;
- const newPage=()=>{page={columns:Array.from({length:cols},()=>[])};pages.push(page);col=0;y=0;};
- const hasText=p=>p.columns.some(c=>c.some(l=>l.kind!=='blank'&&l.text));
- const nextCol=()=>{if(col+1<cols){col++;y=0;}else newPage();};
- const add=(line,kind,height=lineH)=>{if(y+height>usableH+1e-6)nextCol();page.columns[col].push({text:line,kind,yTopPt:y,heightPt:height});y+=height;};
+ const newPage=()=>{page={columns:Array.from({length:cols},()=>[])};pages.push(page);col=0;y=0;},hasText=p=>p.columns.some(c=>c.some(l=>l.kind==='image'||(l.kind!=='blank'&&l.text))),nextCol=()=>{if(col+1<cols){col++;y=0;}else newPage();},add=(line,kind,height=lineH,meta={})=>{if(y+height>usableH+1e-6)nextCol();page.columns[col].push({text:line,kind,yTopPt:y,heightPt:height,...meta});y+=height;};
  newPage();const paragraphs=String(text??'').replace(/\r\n?/g,'\n').split('\n');while(paragraphs.length>1&&!paragraphs.at(-1).trim())paragraphs.pop();
- for(const raw of paragraphs){
-  if(raw.trim()==='[PAGE BREAK]'){if(hasText(pages.at(-1)))newPage();continue;}
-  if(!raw.trim()){if(y+lineH*.55<=usableH+1e-6)add('','blank',lineH*.55);continue;}
-  const heading=/^#\s+/.test(raw),body=heading?raw.replace(/^#\s+/,'').trim():raw.trim(),kind=heading?'heading':'body';
-  if(heading&&chapterNewPage&&hasText(pages.at(-1)))newPage();
-  if(heading&&y+lineH*2>usableH+1e-6)nextCol();
-  for(const line of wrapParagraph(body,colW,t=>measure(t,kind)))add(line,kind);
-  const paragraphGap=lineH*(heading?.25:.45);if(y+paragraphGap<=usableH+1e-6)add('','blank',paragraphGap);
+ for(const raw of paragraphs){const trimmed=raw.trim();if(trimmed==='[PAGE BREAK]'){if(hasText(pages.at(-1)))newPage();continue;}
+  const imageMatch=trimmed.match(/^\[\[IMAGE:([a-z0-9_-]+)\]\]$/i);if(imageMatch){const imageId=imageMatch[1],info=typeof options.getImageInfo==='function'?options.getImageInfo(imageId):null;if(info){const aspect=Number.isFinite(Number(info.aspectRatio))&&Number(info.aspectRatio)>0?Number(info.aspectRatio):4/3,percent=Math.max(20,Math.min(100,Number(info.widthPercent)||80));let imageWidth=colW*percent/100,imageHeight=imageWidth/aspect;const maxHeight=usableH*.62;if(imageHeight>maxHeight){imageHeight=maxHeight;imageWidth=imageHeight*aspect;}const caption=String(info.caption||'').trim().slice(0,220),captionHeight=caption?fs*1.55+4:0,totalHeight=imageHeight+8+captionHeight;if(y+totalHeight>usableH+1e-6)nextCol();add('','image',totalHeight,{imageId,imageWidthPt:imageWidth,imageHeightPt:imageHeight,imageAlign:['left','right','center'].includes(info.align)?info.align:'center',caption});continue;}}
+  if(!trimmed){if(y+lineH*.55<=usableH+1e-6)add('','blank',lineH*.55);continue;}const heading=/^#{1,3}\s+/.test(raw),level=heading?(raw.match(/^#+/)[0].length):0,body=heading?raw.replace(/^#{1,3}\s+/,'').trim():raw.trim(),kind=heading?'heading':'body';if(heading&&chapterNewPage&&level===1&&hasText(pages.at(-1)))newPage();if(heading&&y+lineH*2>usableH+1e-6)nextCol();for(const line of wrapParagraph(body,colW,t=>measure(t,kind)))add(line,kind);const paragraphGap=lineH*(heading?.25:.45);if(y+paragraphGap<=usableH+1e-6)add('','blank',paragraphGap);
  }
- while(pages.length>1&&!hasText(pages.at(-1)))pages.pop();
- return pages.length?pages:[{columns:Array.from({length:cols},()=>[])}];
+ while(pages.length>1&&!hasText(pages.at(-1)))pages.pop();return pages.length?pages:[{columns:Array.from({length:cols},()=>[])}];
+}
 }

@@ -179,6 +179,13 @@ function cleanMessages(messages) {
  if(!out.length) throw Object.assign(new Error("Send a message first."),{status:400});
  return out;
 }
+async function semanticSearchBook(book,messages,model){
+ const key=process.env.OPENROUTER_API_KEY;if(!key)throw new Error('Add OPENROUTER_API_KEY in Vercel Environment Variables to enable semantic retrieval.');if(!model||model.length>180)throw new Error('Load and select an embeddings model in Semantic tools first.');
+ const last=[...messages].reverse().find(m=>m.role==='user'),query=typeof last?.content==='string'?last.content:Array.isArray(last?.content)?last.content.filter(p=>p.type==='text').map(p=>p.text).join(' '):'';if(!query.trim())throw new Error('No text query was available for semantic retrieval.');
+ const raw=String(book.text||'').split(/\n\s*\n/).map(x=>x.trim()).filter(x=>x&&x!=='[PAGE BREAK]'&&!/^\[\[IMAGE:/.test(x)),chunks=[];for(const para of raw){if(para.length<=900)chunks.push(para);else for(let i=0;i<para.length;i+=850)chunks.push(para.slice(i,i+850));if(chunks.length>=60)break;}if(!chunks.length)return [];
+ const result=await requestJSON(OPENROUTER_BASE+'/embeddings',{method:'POST',headers:headersFor('openrouter',key),body:JSON.stringify({model,input:[query.slice(0,1200),...chunks.slice(0,60)]})},16000),entries=Array.isArray(result.data)?[...result.data].sort((a,b)=>(a.index??0)-(b.index??0)):[],vectors=entries.map(x=>x.embedding),q=vectors[0];if(!Array.isArray(q))throw new Error('Embedding provider returned no query vector.');
+ const cosine=(a,b)=>{if(!Array.isArray(a)||a.length!==b.length)return 0;let dot=0,aa=0,bb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}return aa&&bb?dot/(Math.sqrt(aa)*Math.sqrt(bb)):0;};return chunks.slice(0,60).map((text,i)=>({text,index:i+1,score:cosine(q,vectors[i+1]||[])})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5).map(x=>({...x,score:Math.round(x.score*1000)/1000}));
+}
 async function chat(req,body) {
  const provider=String(body.provider||"agnes"), info=providerInfo(provider);
  if(!info.key) throw Object.assign(new Error(provider==="agnes"?"Add AGNES_API_KEY in Vercel Environment Variables first.":"Add OPENROUTER_API_KEY in Vercel Environment Variables first."),{status:424,code:"PROVIDER_NOT_CONFIGURED"});
@@ -186,8 +193,10 @@ async function chat(req,body) {
  if(!model||model.length>150) throw Object.assign(new Error("Choose a valid model ID for the selected provider."),{status:400});
  if(provider==="agnes"&&!/^agnes-[a-zA-Z0-9.-]+$/.test(model)) throw Object.assign(new Error("For Agnes, use a model ID listed by the Agnes API, for example agnes-2.5-flash."),{status:400});
  const book=getBookContext(body),messages=cleanMessages(body.messages);
+ let semanticMatches=[],semanticWarning='';if(body.semanticSearch===true){try{semanticMatches=await semanticSearchBook(book,messages,String(body.semanticModel||''));}catch(e){semanticWarning=String(e.message||'Semantic search unavailable').slice(0,300);}}
  const system="You are BookFlow Studio's book-production assistant for a small print shop. Help prepare real customer books: understand the manuscript, plan chapters, proofread exact passages, choose typography and print settings, and prepare production checks. Preserve the source manuscript unless the user explicitly approves an edit. When analysing or improving content, call get_relevant_passages first; never pretend you read text you did not retrieve. You may call suggest_text_edits to prepare exact before/after proposals. The app validates them and requires the user's Apply click; never say a change is applied until that click occurs. Suggest a named layout preset when appropriate. For print jobs distinguish finished page size from loaded printer paper, normal PDF from imposed booklet PDF, and automatic from manual duplex. Warn about printer non-printable margins and require a test sheet for feed direction. Respond in the user's language, use simple practical wording, and avoid making up printer capabilities. Current book: "+book.title+". Author: "+book.author+". Book words: "+wordCount(book.text)+". Current page and printer setup: "+JSON.stringify(book.settings)+". Use tools to inspect actual text passages.";
- const loopMessages=[{role:"system",content:system},...messages];
+ const semanticPrompt=semanticMatches.length?{role:'system',content:'Optional semantic search returned source passages. Use them as evidence only when relevant; refer to passage numbers and do not invent facts.\n'+semanticMatches.map((m,i)=>'['+(i+1)+'] Similarity '+m.score+': '+m.text).join('\n\n')}:null;
+ const loopMessages=[{role:"system",content:system},...(semanticPrompt?[semanticPrompt]:[]),...messages];
  const toolRuns=[];
  const useTools=body.enableTools!==false;
  for(let round=0;round<5;round++){
@@ -197,7 +206,7 @@ async function chat(req,body) {
   const choice=response?.choices?.[0],message=choice?.message;
   if(!message) throw Object.assign(new Error("Provider returned no assistant message."),{status:502});
   const calls=Array.isArray(message.tool_calls)?message.tool_calls:[];
-  if(!calls.length) return {ok:true,provider,model,reply:typeof message.content==="string"?message.content:(Array.isArray(message.content)?message.content.map(x=>x.text||"").join("\n"):""),toolRuns,usage:response.usage||null,finishReason:choice.finish_reason||null};
+  if(!calls.length) return {ok:true,provider,model,reply:typeof message.content==="string"?message.content:(Array.isArray(message.content)?message.content.map(x=>x.text||"").join("\n"):""),toolRuns,semanticMatches,semanticWarning,usage:response.usage||null,finishReason:choice.finish_reason||null};
   loopMessages.push({role:"assistant",content:message.content||null,tool_calls:calls});
   let count=0;
   for(const call of calls){
@@ -210,7 +219,7 @@ async function chat(req,body) {
    loopMessages.push({role:"tool",tool_call_id:call.id,content:JSON.stringify(result).slice(0,8000)});
   }
  }
- return {ok:true,provider,model,reply:"I checked the available book tools, but this model did not finish a final answer. Please retry with a shorter instruction.",toolRuns,usage:null,finishReason:"tool_loop_limit"};
+ return {ok:true,provider,model,reply:"I checked the available book tools, but this model did not finish a final answer. Please retry with a shorter instruction.",toolRuns,semanticMatches,semanticWarning,usage:null,finishReason:"tool_loop_limit"};
 }
 async function generateImage(body) {
  const provider=String(body.provider||"agnes"),prompt=String(body.prompt||"").trim();
