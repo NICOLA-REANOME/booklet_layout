@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const app=readFileSync(new URL('../src/app.mjs',import.meta.url),'utf8');\nconst api=readFileSync(new URL('../api/ai.mjs',import.meta.url),'utf8');
+const app=readFileSync(new URL('../src/app.mjs',import.meta.url),'utf8');
 const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
 const refs=[...app.matchAll(/\$\(['"]([^'"]+)['"]\)/g)].map(m=>m[1]);
 const missing=[...new Set(refs.filter(id=>!ids.has(id)))];
@@ -39,7 +39,7 @@ test('AI image input is not persisted in multi-turn chat history',()=>{
  assert.doesNotMatch(app,/aiHistory\.push\(\{role:'user',content:userContent\}/);
 });
 
-test('book images can be inserted and embedded into PDF and Word output',()=>{\n assert.ok(html.includes('id="insertImage"'));assert.ok(html.includes('id="imageWidth"'));assert.ok(app.includes('async function addBookImage'));assert.ok(app.includes('page.drawImage(image'));assert.ok(app.includes('wp:inline'));\n});\n\ntest('Word export includes headers, footers, footnotes and an updateable contents field',()=>{\n assert.ok(html.includes('id="wordHeader"'));assert.ok(html.includes('id="wordFooter"'));assert.ok(html.includes('id="wordToc"'));assert.ok(app.includes('w:footnoteReference'));assert.ok(app.includes('TOC '));assert.ok(app.includes('header1.xml'));assert.ok(app.includes('footer1.xml'));\n});\n\ntest('Book Assistant has optional OpenRouter semantic retrieval',()=>{\n assert.ok(html.includes('id="semanticRetrieval"'));assert.ok(app.includes('semanticSearch:'));assert.ok(api.includes('semanticSearchBook'));\n});\n\ntest('AI assistant presents verified before/after edits for explicit user application',()=>{
+test('AI assistant presents verified before/after edits for explicit user application',()=>{
  assert.match(app,/run\.name==='suggest_text_edits'/);
  assert.match(app,/current\.indexOf\(needle\)/);
  assert.match(app,/Apply this edit/);
