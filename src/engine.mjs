@@ -75,4 +75,3 @@ export function paginateManuscript(text,options={}){
  }
  while(pages.length>1&&!hasText(pages.at(-1)))pages.pop();return pages.length?pages:[{columns:Array.from({length:cols},()=>[])}];
 }
-}
