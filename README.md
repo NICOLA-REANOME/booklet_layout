@@ -120,3 +120,9 @@ For all printers, use the app's duplex test sheet before printing an entire book
 - OpenRouter video model catalogue: https://openrouter.ai/collections/video-models/
 - OpenRouter embeddings: https://openrouter.ai/docs/api/api-reference/embeddings/create-embeddings
 - OpenRouter Claude Code guide (only for actual Claude Code traffic): https://openrouter.ai/docs/cookbook/coding-agents/claude-code-integration
+
+
+### Image proofing and book preview
+- Image controls accept exact width/height and X/Y offsets in millimetres. Select the `[[IMAGE:id]]` marker in the manuscript, load its settings, and apply changes to update an existing image.
+- The Book Preview shows a two-page spread with a centre spine and animated page turns. The first page appears on the right, subsequent spreads open left/right, and navigation follows the paginated book.
+- This is a visual screen proof. Inspect the exported PDF at 100% and print a physical test sheet before final production.

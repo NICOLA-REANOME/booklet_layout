@@ -39,6 +39,12 @@ test('AI image input is not persisted in multi-turn chat history',()=>{
  assert.doesNotMatch(app,/aiHistory\.push\(\{role:'user',content:userContent\}/);
 });
 
+test('image controls expose physical size and position and update selected images',()=>{
+ assert.match(html,/id="imageWidthMm"/);assert.match(html,/id="imageHeightMm"/);assert.match(html,/id="imageXmm"/);assert.match(html,/id="imageYmm"/);assert.match(app,/function applySelectedImageSettings/);assert.match(app,/widthMm:/);assert.match(app,/imageOffsetXPt/);
+});
+test('book preview has two-page layout and animated page turns',()=>{
+ assert.match(html,/data-view="book"/);assert.match(html,/id="bookViewport"/);assert.match(html,/id="bookTurn"/);assert.match(app,/function flipBook/);assert.match(app,/function renderBookPage/);assert.match(app,/rotateY\(-180deg\)/);
+});
 test('AI assistant presents verified before/after edits for explicit user application',()=>{
  assert.match(app,/run\.name==='suggest_text_edits'/);
  assert.match(app,/current\.indexOf\(needle\)/);

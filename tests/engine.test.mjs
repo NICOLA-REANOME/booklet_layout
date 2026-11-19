@@ -115,6 +115,11 @@ test('printer-safe fit mode keeps the imposed spread inside a 5 mm edge allowanc
   assert.equal(g.fits,true);
   assert.equal(g.safeAreaFit,true);
 });
-test('invalid printer-safe edge allowances are rejected', () => {
+test('image blocks preserve explicit width, height, and X/Y offsets',()=>{
+ const pages=paginateManuscript('Before\n[[IMAGE:diagram]]\nAfter',{pageWidthPt:420,pageHeightPt:600,fontSize:10,topMarginPt:30,bottomMarginPt:30,leftMarginPt:30,rightMarginPt:30,measureText:t=>t.length*4,getImageInfo:id=>id==='diagram'?{aspectRatio:2,widthPt:120,heightPt:90,offsetXPt:8,offsetYPt:12,align:'left',caption:'Detail'}:null});
+ const image=pages.flatMap(p=>p.columns.flat()).find(line=>line.kind==='image');
+ assert.ok(image);assert.equal(image.imageWidthPt,120);assert.equal(image.imageHeightPt,90);assert.equal(image.imageOffsetXPt,8);assert.equal(image.imageOffsetYPt,12);assert.equal(image.caption,'Detail');
+});
+test('invalid printer-safe edge allowances are rejected',()=>{
   assert.throws(() => calculateImpositionGeometry({pageW:148,pageH:210,sheetW:297,sheetH:210,fitMode:'safe',safeEdgeMarginMm:110}),/edge margin/);
 });
