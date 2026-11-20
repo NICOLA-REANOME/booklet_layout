@@ -1,12 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const app=readFileSync(new URL('../src/app.mjs',import.meta.url),'utf8');
 const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
 const refs=[...app.matchAll(/\$\(['"]([^'"]+)['"]\)/g)].map(m=>m[1]);
 const missing=[...new Set(refs.filter(id=>!ids.has(id)))];
+
+test('the browser app imports its engine from a file that exists relative to src/app.mjs',()=>{
+ const spec=app.split("from ")[1]?.split(";")[0]?.trim().replace(/^['"]|['"]$/g,'');
+ assert.ok(spec,'app.mjs should declare its engine module import');
+ assert.ok(existsSync(new URL(spec,new URL('../src/app.mjs',import.meta.url))),`missing module ${spec} relative to src/app.mjs`);
+});
 
 test('every literal UI element referenced by the app exists in index.html',()=>{
  assert.deepEqual(missing,[]);
