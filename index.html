@@ -141,23 +141,125 @@
 .book-mode-flat .closed-book{transform:none;filter:drop-shadow(8px 12px 12px #16223826)}.book-mode-flat .closed-book-viewport{background:#f3f5f8}.book-mode-3d .closed-book{transform:rotateY(-25deg) rotateX(5deg)}
 .cover-caption{text-align:center;padding:0 10px}
 @media(max-width:740px){.book-controls{align-items:stretch}.book-control-group{flex:1 1 45%}.closed-book-viewport{min-height:410px}.closed-book{width:230px;height:335px}.closed-cover-title{font-size:26px}}
+
+/* Production cover wrap and physical press sheet proof */
+.cover-production-settings{margin:12px 0;padding:10px;background:#f7f9fc;border:1px solid #e0e7f1;border-radius:10px}
+.cover-production-settings .field{margin:7px 0}
+.cover-spread-header,.press-preview-heading,.press-sheet-list-head,.marketing-preview-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px}
+.cover-spread-header span,.press-preview-heading small,.press-preview-heading>span,.press-sheet-list-head span,.marketing-preview-head span{font-size:10px;color:var(--muted)}
+.cover-spread-stage{background:radial-gradient(ellipse at center,#fff 0%,#e7ebf1 76%);padding:20px 12px;border:1px solid #dce3ed;border-radius:12px;overflow:hidden}
+.cover-spread-bleed{width:min(100%,920px);margin:0 auto;aspect-ratio:var(--cover-spread-ratio,1.5);position:relative;background:repeating-linear-gradient(135deg,#fff0f0 0 5px,#f8dddd 5px 10px);box-shadow:0 12px 24px #1c2d471b}
+.cover-spread-trim{position:absolute;left:var(--bleed-x,1%);right:var(--bleed-x,1%);top:var(--bleed-y,1%);bottom:var(--bleed-y,1%);display:grid;grid-template-columns:var(--cover-back-share,1fr) var(--cover-spine-share,1%) var(--cover-front-share,1fr);box-shadow:0 0 0 1px #27344a}
+.cover-spread-panel{min-width:0;position:relative;overflow:hidden;padding:7%;display:flex;flex-direction:column;color:#f7f0e4;background:#20283d}
+.cover-spread-back{background:linear-gradient(145deg,#182033,#34415b)}
+.cover-panel-kicker{font:800 clamp(7px,1.1vw,12px)/1.2 Arial,sans-serif;letter-spacing:.16em;color:#d9bf7c}
+.cover-spread-back-copy{font:clamp(8px,1.25vw,15px)/1.55 Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12%;max-height:55%;overflow:hidden}
+.cover-barcode-reserve{margin-top:auto;align-self:flex-end;width:26%;height:10%;min-height:28px;background:#f9f7ef;color:#4b4b4b;display:grid;place-items:center;text-align:center;font:6px Arial,sans-serif;letter-spacing:.03em;padding:4px}
+.cover-spread-spine{position:relative;display:flex;justify-content:center;align-items:center;overflow:hidden;background:linear-gradient(90deg,#101726,#39445a 50%,#111a2b);border-left:1px solid #ffffff30;border-right:1px solid #0005;color:#d9bf7c}
+.cover-spread-spine span{writing-mode:vertical-rl;transform:rotate(180deg);font:700 clamp(7px,1.15vw,13px)/1.2 Georgia,serif;letter-spacing:.08em;text-align:center;max-height:94%;overflow:hidden}
+.cover-spread-front{justify-content:center;align-items:center;text-align:center;background:radial-gradient(ellipse at 50% 35%,#56415d,#1a2238 74%)}
+.cover-spread-front.cover-noir{background:linear-gradient(145deg,#0b121c,#28303c 65%,#11151c)}.cover-spread-front.cover-modern{background:linear-gradient(145deg,#1456a0,#152547 58%,#0d1220)}.cover-spread-front.cover-editorial{background:linear-gradient(145deg,#e9e1cf,#f7f1e7);color:#263247}.cover-spread-front.cover-botanical{background:radial-gradient(ellipse at 45% 30%,#426d55,#142d28 75%)}.cover-spread-front.cover-minimal{background:#f1eee6;color:#202124}
+.cover-spread-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.83}
+.cover-spread-front-frame{position:relative;z-index:1;width:82%;height:88%;border:1px solid var(--cover-accent,#d7b66e);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8%;gap:7%;text-shadow:0 2px 6px #0007}
+.cover-spread-front.cover-editorial .cover-spread-front-frame,.cover-spread-front.cover-minimal .cover-spread-front-frame{border-color:#84734f;text-shadow:none}
+.cover-spread-kicker{font:800 clamp(7px,1.2vw,13px)/1.3 Arial,sans-serif;letter-spacing:.2em;color:var(--cover-accent,#d7b66e)}
+.cover-spread-title{font:700 clamp(18px,3.4vw,42px)/1.08 Georgia,serif;overflow-wrap:anywhere}
+.cover-spread-subtitle{font:italic clamp(8px,1.35vw,16px)/1.4 Georgia,serif}
+.cover-spread-author{margin-top:auto;font:700 clamp(7px,1.1vw,13px)/1.3 Arial,sans-serif;letter-spacing:.13em;text-transform:uppercase;color:var(--cover-accent,#d7b66e)}
+.cover-safe-guide{position:absolute;inset:var(--cover-safe-y,2%) var(--cover-safe-x,2%);border:1px dashed #ffffff87;pointer-events:none}
+.cover-spread-panel.cover-editorial .cover-safe-guide,.cover-spread-panel.cover-minimal .cover-safe-guide{border-color:#6b654f88}
+.cover-production-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
+.cover-spread-actions{display:flex;justify-content:flex-end}
+.book-angle-controls{display:none;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:9px;background:#fff;border:1px solid #e0e5ed;border-radius:10px}
+.book-angle-controls.visible{display:flex}
+.book-angle-controls span{font-size:9px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:#748198;margin-right:4px}
+.book-angle-controls button{font-size:10px;padding:7px 10px}.book-angle-controls button.active{background:#eaf0ff;color:#2056d8;border-color:#b9caff}
+.closed-book-stage{min-height:480px;background:radial-gradient(ellipse at 50% 42%,#fff 0%,#e8edf3 62%,#dfe5ee 100%);border-radius:14px;overflow:hidden}
+.closed-book{--book-depth:18px;transform-style:preserve-3d;box-shadow:none}
+.closed-back-cover{transform:rotateY(180deg) translateZ(calc(var(--book-depth) / 2));backface-visibility:hidden}
+.closed-front-cover{transform:translateZ(calc(var(--book-depth) / 2));backface-visibility:hidden}
+.closed-page-block{left:7px;right:calc(-1 * var(--book-depth));top:5px;bottom:5px;transform:translateZ(0);border-radius:1px;background:repeating-linear-gradient(to bottom,#fffef9 0,#fffef9 2px,#d8d4ca 2px,#d8d4ca 2.75px);box-shadow:2px 1px 6px #241d1644,0 0 0 1px #a99f8c}
+.closed-book .closed-spine{left:calc(-1 * var(--book-depth) - 3px);width:calc(var(--book-depth) + 3px);transform:rotateY(-90deg) translateZ(calc(var(--book-depth) / 2));transform-origin:right center}
+.angle-hero .closed-book{transform:rotateY(-28deg) rotateX(5deg) translateY(-4px)}.angle-front .closed-book{transform:rotateY(0deg) rotateX(0deg)}.angle-spine .closed-book{transform:rotateY(-62deg) rotateX(2deg)}.angle-back .closed-book{transform:rotateY(180deg) rotateX(1deg)}.angle-flatlay .closed-book{transform:rotateX(52deg) rotateZ(-8deg) rotateY(-10deg) translateY(10px)}
+.cover-noir .closed-front-cover:after,.cover-classic .closed-front-cover:after,.cover-botanical .closed-front-cover:after{content:"";position:absolute;inset:9px;border:1px solid var(--cover-accent);opacity:.65;pointer-events:none}
+.cover-modern .closed-front-cover:after{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--cover-accent);opacity:.8}
+.press-preview-panel{padding:12px;background:#f7f9fc;border:1px solid #dce3ed;border-radius:12px;margin:12px 0}
+.press-preview-heading small{display:block;margin-top:3px}
+.press-preview-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:12px 0}
+.press-preview-controls label{font-size:10px;color:#58677f;font-weight:750;display:flex;flex-direction:column;gap:4px}
+.press-preview-controls select{border:1px solid #d5ddea;background:#fff;border-radius:7px;padding:7px;min-width:150px}
+.press-side-toggle,.press-preview-navigation{display:flex;gap:4px}
+.press-side-toggle button,.press-preview-navigation button{font-size:10px;padding:7px 10px}
+.press-side-toggle button.active{background:#eaf0ff;color:#2056d8;border-color:#b9caff}
+.press-sheet-stage{display:grid;place-items:center;padding:12px;background:radial-gradient(ellipse at center,#fff 0%,#e9edf3 76%);border-radius:10px;overflow:hidden}
+.press-sheet-physical{position:relative;width:min(100%,760px);aspect-ratio:297/210;background:#fff;box-shadow:0 8px 20px #1a2a401b;border:1px solid #cfd7e3;overflow:hidden}
+.press-page-slot{position:absolute;z-index:1;overflow:hidden}.press-page-slot .book-page{box-shadow:none;border:1px solid #d9d6cc}.press-page-slot .book-page-number{font-size:8px}
+.press-page-slot .press-blank-label{position:absolute;inset:0;display:grid;place-items:center;font:700 11px Arial;color:#a2a9b5}
+.press-centre-fold{position:absolute;top:0;bottom:0;left:50%;border-left:1px dashed #6a7890;opacity:.55;z-index:3;pointer-events:none}
+.press-preview-caption{text-align:center;color:var(--muted);font-size:10px;margin-top:9px}
+.press-sheet-list-head{margin:12px 0 8px}
+.sheetlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.sheet.selectable-sheet{cursor:pointer;text-align:left;background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px}
+.sheet.selectable-sheet.active{border-color:#5b83e8;box-shadow:0 0 0 2px #5b83e81a}
+.sheet-mini-pages{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:7px}
+.sheet-mini-pages span{background:#f3f5f8;border:1px solid #dce2ea;min-height:35px;display:grid;place-items:center;font-size:10px;color:#4c5a70}
+.marketing-panel{margin-top:16px;scroll-margin-top:20px;overflow:hidden}
+.marketing-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.marketing-head small{display:block;font-size:10px;font-weight:500;color:var(--muted);margin-top:3px}
+.marketing-mark{color:#d19e35;font-size:18px;margin-right:5px}.marketing-local{font-size:10px;color:#347254;background:#edf8f1;border-radius:999px;padding:5px 9px}
+.marketing-layout{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(300px,1.2fr);gap:18px;padding:15px}
+.marketing-form{min-width:0}.marketing-form .field{margin:9px 0}.marketing-form textarea{width:100%;resize:vertical;border:1px solid #d5ddea;border-radius:8px;padding:9px;font:12px/1.5 inherit}
+.marketing-actions{display:grid;gap:7px;margin-top:12px}.marketing-preview-column{min-width:0;display:flex;flex-direction:column;gap:10px}
+.marketing-preview-head{padding:0 2px}.marketing-canvas-wrap{display:grid;place-items:center;padding:12px;background:radial-gradient(ellipse at center,#fff 0%,#e7ebf2 78%);border-radius:12px;overflow:hidden}
+#marketingCanvas{display:block;width:min(100%,410px);height:auto;border-radius:5px;box-shadow:0 12px 28px #15243a26;background:#1c263b}
+.marketing-output-note{font-size:10px;color:var(--muted)}
+@media(max-width:900px){.marketing-layout{grid-template-columns:1fr}.marketing-preview-column{max-width:520px;width:100%;margin:0 auto}}
+@media(max-width:740px){.press-preview-controls{align-items:stretch}.press-preview-navigation{margin-left:auto}.cover-spread-stage{padding:12px 5px}.closed-book-stage{min-height:410px}.sheetlist{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head><body>
 <header class="top"><div class="logo">B</div><div class="brand">BookFlow Studio<small>Book layout & print manager</small></div><div class="actions"><button id="newBook">＋ New book</button><button id="save">Save</button><button id="wordExport">Export Word</button><button class="primary" id="readingPdf">Download PDF</button></div></header>
-<main class="shell"><div class="workflow" role="navigation" aria-label="Book workflow"><button class="step on" data-jump="editorpanel">01&nbsp; Write</button><button class="step" data-jump="presetboard">02&nbsp; Design</button><button class="step" data-jump="print-section">03&nbsp; Print</button><button class="step" data-jump="aiStudio">04&nbsp; AI Studio</button><span class="statuspill" id="saved">Saved locally</span></div>
+<main class="shell"><div class="workflow" role="navigation" aria-label="Book workflow"><button class="step on" data-jump="editorpanel">01&nbsp; Write</button><button class="step" data-jump="presetboard">02&nbsp; Design</button><button class="step" data-jump="print-section">03&nbsp; Print</button><button class="step" data-jump="aiStudio">04&nbsp; AI Studio</button><button class="step" data-jump="marketingStudio">05&nbsp; Marketing</button><span class="statuspill" id="saved">Saved locally</span></div>
 <div class="layout">
 <aside class="panel sidebar"><div class="head">My books <button id="newBook2">＋</button></div><div class="body"><div class="field project-search"><label for="projectSearch">Find a book</label><input id="projectSearch" type="search" placeholder="Search title or author…"></div><div id="projectList" class="projectlist"></div><div class="sect">Import manuscript</div><label class="small">TXT · Markdown · Word · PDF<input id="textImport" class="file" type="file" accept=".txt,.md,.markdown,.docx,.pdf"></label><div class="note info">Word and text-based PDF files can be imported. Scanned image-only PDFs still need OCR outside this version.</div><div class="stats"><div class="stat"><b id="words">0</b><small>Words</small></div><div class="stat"><b id="chars">0</b><small>Characters</small></div><div class="stat"><b id="pages">1</b><small>Est. pages</small></div></div><div class="sect">Project backup</div><button id="backup" class="wide">Export backup (.json)</button><button id="importBackup" class="wide mt">Import backup</button><input id="backupFile" class="hidden" type="file" accept=".json"><p class="small muted">Books are stored in this browser using local database storage. Export a backup regularly; books do not sync to other devices.</p></div></aside>
 <section class="panel editorpanel"><div class="head">Manuscript editor <span class="statuspill">Flowing layout</span></div><div class="toolbar"><button id="undo">↶ Undo</button><button id="redo">↷ Redo</button><select id="textStyle"><option value="body">Body</option><option value="title">Title</option><option value="heading">Chapter heading</option></select><button id="pageBreak">Insert page break</button><button id="insertImage">＋ Add image</button><select id="imageWidth" title="Image width"><option value="60">Image 60%</option><option value="80" selected>Image 80%</option><option value="100">Image 100%</option></select><select id="imageAlign" title="Image alignment"><option value="left">Image left</option><option value="center" selected>Image centre</option><option value="right">Image right</option></select><input id="imageCaption" placeholder="Image caption (optional)" aria-label="Image caption"><button id="insertFootnote">Insert footnote</button><input id="bookImageFile" class="hidden" type="file" accept="image/png,image/jpeg,image/webp"></div><div class="image-controls"><div class="image-controls-title">Image size & position · mm</div><div class="image-control-grid"><label>Width<input id="imageWidthMm" type="number" min="5" max="500" step="0.5" placeholder="Auto"></label><label>Height<input id="imageHeightMm" type="number" min="5" max="700" step="0.5" placeholder="Auto" disabled></label><label>X offset<input id="imageXmm" type="number" min="-200" max="200" step="0.5" value="0"></label><label>Y offset<input id="imageYmm" type="number" min="-200" max="200" step="0.5" value="0"></label></div><label class="check"><input type="checkbox" id="imageKeepRatio" checked> Keep original image proportions</label><div class="image-action-row"><button type="button" id="loadImageSettings">Load selected image</button><button type="button" id="applyImageSettings" class="primary">Apply size & position</button></div><div class="small muted" id="selectedImageStatus">Width mm overrides the percentage preset; leave it blank to use 60/80/100%. X/Y offsets move the image from its anchor. To edit an existing image, select its [[IMAGE:...]] marker, load it, then apply.</div></div><div class="small muted" style="padding:0 10px 8px">Images are anchored where the cursor is placed. Footnotes use an inline reference and an editable definition placeholder.</div><label class="sr" for="manuscript">Manuscript content</label><textarea id="manuscript" class="manuscript" spellcheck="true" placeholder="Paste your manuscript here. Use # Chapter title on its own line to start a chapter."></textarea><div class="editorfoot"><span id="editStatus">Autosaves locally</span><span id="pageIndex">Page 1 / 1</span></div><div class="previewheader"><b>Preview</b><div class="tabs"><button class="tab active" data-view="reader">Reader page</button><button class="tab" data-view="book">Book Preview · Page Turn</button><button class="tab" data-view="sheets">Booklet sheets</button><button class="tab" data-view="checks">Print checks</button></div></div><div id="readerView"><div class="preview"><div class="pagenav"><button id="prev">← Prev</button><span id="pageLabel">Page 1 of 1</span><button id="next">Next →</button></div><div id="paper" class="paper"><div id="papertext" class="papertext"></div><span id="pagenum" class="pagenum"></span></div><div class="small muted">Preview is approximate; always open and inspect the exported PDF.</div></div></div><div id="bookView" class="hidden"><div class="book-preview-wrap" id="bookPreviewWrap">
 <div class="book-view-head"><b>Book Preview Studio</b><span id="bookPageLabel">Opening · Page 1 on the right</span></div>
 <div class="book-controls">
-  <div class="book-control-group"><span>Presentation</span><button type="button" class="active" data-book-presentation="open" aria-pressed="true">Open pages</button><button type="button" data-book-presentation="closed" aria-pressed="false">Closed cover</button></div>
-  <div class="book-control-group"><span>View</span><button type="button" class="active" data-book-style="3d" aria-pressed="true">3D Studio</button><button type="button" data-book-style="2d" aria-pressed="false">2D Flat</button></div>
+  <div class="book-control-group"><span>Presentation</span><button type="button" class="active" data-book-presentation="open" aria-pressed="true">Open book</button><button type="button" data-book-presentation="cover" aria-pressed="false">Cover design</button></div>
+  <div class="book-control-group"><span>View</span><button type="button" class="active" data-book-style="3d" aria-pressed="true">3D Mockup</button><button type="button" data-book-style="2d" aria-pressed="false">2D Spread</button></div>
   <button type="button" class="primary" id="exportShareableReader">Export shareable reader (.html)</button>
 </div>
 <div id="bookOpenView"><div class="book-viewport" id="bookViewport"><div class="book-open" id="bookOpen"><div class="book-slot book-slot-left"><div id="bookLeft"></div></div><div class="book-spine"></div><div class="book-slot book-slot-right"><div id="bookRight"></div></div><div class="book-turn" id="bookTurn"><div class="book-face book-face-front" id="bookTurnFront"></div><div class="book-face book-face-back" id="bookTurnBack"></div></div></div></div>
 <div class="book-nav"><button id="bookPrev">← Previous spread</button><span class="small muted" id="bookHint">Page 1 starts on the right.</span><button id="bookNext" class="primary">Turn page →</button></div></div>
 <div id="bookClosedView" class="hidden"><div class="closed-book-viewport"><div id="closedBookStage" class="closed-book-stage"><div id="closedBook" class="closed-book cover-classic"><div class="closed-back-cover"><div class="closed-back-copy" id="closedBackText"></div></div><div class="closed-page-block"></div><div class="closed-spine"><span id="closedSpineTitle"></span></div><div class="closed-front-cover"><img id="closedCoverImage" class="closed-cover-art hidden" alt="Book cover artwork"><div class="closed-cover-frame"><div class="closed-cover-kicker" id="closedCoverKicker">A NOVEL</div><div class="closed-cover-title" id="closedCoverTitle">Untitled book</div><div class="closed-cover-subtitle" id="closedCoverSubtitle"></div><div class="closed-cover-author" id="closedCoverAuthor"></div></div></div></div></div><div class="small muted cover-caption">Front cover is a separate physical cover, not a numbered manuscript page. When opened, page 1 begins on the right.</div></div>
-<div class="note info">The closed mockup is the outside cover; open pages show the reading order. The downloadable HTML reader includes its cover, formatted pages, embedded images and working page navigation. PDF remains the print master; inspect it at 100% before printing.</div>
-</div></div><div id="sheetsView" class="body hidden"><div class="note info" id="sheetSummary"></div><div class="sheetlist" id="sheetList"></div></div><div id="checksView" class="body hidden"><div id="checks"></div><button class="primary wide mt" id="testSheet">Download duplex test sheet</button></div></section>
+<div id="bookCoverView" class="hidden">
+ <div class="cover-spread-header"><b>Full cover wrap · Back / Spine / Front</b><span id="coverSpreadDimensions"></span></div>
+ <div class="cover-spread-stage"><div class="cover-spread-bleed" id="coverSpreadBleed">
+  <div class="cover-spread-trim">
+   <section class="cover-spread-panel cover-spread-back"><div class="cover-panel-kicker">BACK COVER</div><div id="coverSpreadBackText" class="cover-spread-back-copy"></div><div class="cover-barcode-reserve"><span>BARCODE / ISBN AREA</span></div><div class="cover-safe-guide"></div></section>
+   <section class="cover-spread-spine"><span id="coverSpreadSpineTitle"></span></section>
+   <section class="cover-spread-panel cover-spread-front" id="coverSpreadFrontPanel"><img id="coverSpreadArtwork" class="cover-spread-art hidden" alt="Front cover artwork"><div class="cover-spread-front-frame"><div id="coverSpreadKicker" class="cover-spread-kicker">A NOVEL</div><div id="coverSpreadFrontTitle" class="cover-spread-title">Untitled book</div><div id="coverSpreadSubtitle" class="cover-spread-subtitle"></div><div id="coverSpreadAuthor" class="cover-spread-author"></div></div><div class="cover-safe-guide"></div></section>
+  </div>
+ </div></div>
+ <div class="cover-production-meta"><span id="coverSpineEstimate"></span><span>Red edge = bleed · trim boundary · inset = safe area</span></div>
+ <div class="cover-spread-actions"><button type="button" class="primary" id="exportCoverSVG2">Export full wrap SVG for CorelDRAW</button></div>
+ <div class="note info">This is a dimensional cover layout, not just a front-cover mockup. Spine width remains an estimate until paper stock, binding and printer template are confirmed.</div>
+</div>
+<div class="book-angle-controls" id="bookAngleControls"><span>3D camera</span><button type="button" class="active" data-book-angle="hero">Hero</button><button type="button" data-book-angle="front">Front</button><button type="button" data-book-angle="spine">Spine</button><button type="button" data-book-angle="back">Back</button><button type="button" data-book-angle="flatlay">Flat lay</button></div>
+<div class="note info">Open Book previews reading order; Cover Design switches between a back–spine–front print wrap and an angled 3D book mockup. Marketing Studio also exports launch artwork and a campaign landing page. PDF remains the print master; inspect it at 100% before printing.</div>
+</div></div><div id="sheetsView" class="body hidden">
+ <div class="note info" id="sheetSummary"></div>
+ <div class="press-preview-panel">
+  <div class="press-preview-heading"><div><b>Physical sheet proof</b><small>Imposed reader pages positioned on the selected printer sheet</small></div><span id="sheetPreviewDimensions"></span></div>
+  <div class="press-preview-controls">
+   <label>Physical sheet <select id="sheetPreviewIndex"></select></label>
+   <div class="press-side-toggle"><button type="button" class="active" data-sheet-side="front">Front</button><button type="button" data-sheet-side="back">Back</button></div>
+   <div class="press-preview-navigation"><button type="button" id="sheetPrev">← Previous</button><button type="button" id="sheetNext">Next →</button></div>
+  </div>
+  <div class="press-sheet-stage"><div id="sheetPhysical" class="press-sheet-physical"><div id="sheetPreviewLeft" class="press-page-slot"></div><div id="sheetPreviewRight" class="press-page-slot"></div><div class="press-centre-fold"></div></div></div>
+  <div id="sheetPreviewCaption" class="press-preview-caption"></div>
+ </div>
+ <div class="press-sheet-list-head"><b>Signature sheet overview</b><span>Choose a sheet to inspect its front and reverse</span></div>
+ <div class="sheetlist" id="sheetList"></div>
+</div><div id="checksView" class="body hidden"><div id="checks"></div><button class="primary wide mt" id="testSheet">Download duplex test sheet</button></div></section>
 <aside class="panel settings"><div class="head">Page & print setup</div><div class="body">
 <div class="presetboard" id="presetboard">
   <div class="preset-kicker">QUICK SETUP</div>
@@ -180,6 +282,17 @@
 <div class="field"><label for="coverAccent">Accent colour</label><input id="coverAccent" type="color" value="#d7b66e"></div>
 <div class="field"><label for="coverBackText">Back-cover description</label><textarea id="coverBackText" rows="4" maxlength="1200" placeholder="Optional blurb. Leave blank to use an excerpt from your manuscript."></textarea></div>
 <div class="field"><label for="coverImageFile">Front-cover artwork</label><input id="coverImageFile" type="file" accept="image/png,image/jpeg,image/webp"><div class="small muted" id="coverImageStatus">No cover artwork selected.</div><button type="button" id="removeCoverImage" class="wide mt">Remove cover artwork</button></div>
+<div class="cover-production-settings">
+ <div class="sect">Cover production · estimates</div>
+ <div class="field"><label for="coverBinding">Binding type</label><select id="coverBinding"><option value="perfect">Paperback · perfect bound</option><option value="saddle">Saddle stitch · folded</option><option value="hardcover">Hardcover · casebound estimate</option></select></div>
+ <div class="row2">
+  <div class="field"><label for="coverCaliper">Paper caliper / leaf (mm)</label><input id="coverCaliper" type="number" min="0.04" max="0.30" step="0.005" value="0.10"></div>
+  <div class="field"><label for="coverBleed">Bleed (mm)</label><input id="coverBleed" type="number" min="0" max="10" step="0.5" value="3"></div>
+ </div>
+ <div class="field"><label for="coverSafe">Cover safe margin (mm)</label><input id="coverSafe" type="number" min="0" max="30" step="0.5" value="5"></div>
+ <div class="small muted">Spine width is estimated from reader-page count and assumed paper caliper. Confirm exact spine, hinge, wrap and bleed with your printer before production.</div>
+ <button type="button" id="exportCoverSVG" class="wide mt">Download print cover spread · SVG</button>
+</div>
 <details class="setting-group"><summary><span class="group-icon">▤</span><span><b>Finished page & typography</b><small>Book size, margins, text and page numbers</small></span><span class="group-chevron">⌄</span></summary><div class="setting-inner">
 <div class="sect">Finished book page</div><div class="field"><label for="pagePreset">Page size preset</label><select id="pagePreset"><option>A5</option><option>A4</option><option>A6</option><option>B5</option><option>B6</option><option>Letter</option><option>Legal</option><option>Custom</option></select></div><div class="row2"><div class="field"><label for="pageW">Width (mm)</label><input id="pageW" type="number" min="40" max="700" value="148"></div><div class="field"><label for="pageH">Height (mm)</label><input id="pageH" type="number" min="40" max="1000" value="210"></div></div><div class="field"><label for="orientation">Orientation</label><select id="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></div>
 <div class="sect">Text layout</div><div class="row2"><div class="field"><label for="fontSize">Font size (pt)</label><input id="fontSize" type="number" min="6" max="24" value="11"></div><div class="field"><label for="columns">Columns</label><select id="columns"><option value="1">1 column</option><option value="2">2 columns</option><option value="3">3 columns</option><option value="4">4 columns</option></select></div></div><div class="row2"><div class="field"><label for="lineSpacing">Line spacing</label><select id="lineSpacing"><option value="1.2">Compact</option><option value="1.4" selected>Standard</option><option value="1.65">Relaxed</option></select></div><div class="field"><label for="align">Alignment</label><select id="align"><option value="left">Left</option><option value="justify">Justified</option><option value="center">Centered</option></select></div></div><div class="row2"><div class="field"><label for="topMargin">Top margin (mm)</label><input id="topMargin" type="number" value="18" min="0" max="100"></div><div class="field"><label for="bottomMargin">Bottom margin (mm)</label><input id="bottomMargin" type="number" value="18" min="0" max="100"></div></div><div class="row2"><div class="field"><label for="innerMargin">Inner margin (mm)</label><input id="innerMargin" type="number" value="18" min="0" max="100"></div><div class="field"><label for="outerMargin">Outer margin (mm)</label><input id="outerMargin" type="number" value="14" min="0" max="100"></div></div><div class="field"><label for="gutter">Extra binding gutter (mm)</label><input id="gutter" type="number" value="5" min="0" max="60"></div><label class="check"><input id="pageNumbers" type="checkbox" checked> Show page numbers</label><label class="check"><input id="chapterStart" type="checkbox" checked> Start # chapters on new pages</label>
@@ -275,6 +388,30 @@
       </div>
     </div>
   </div>
+</section>
+<section class="panel marketing-panel" id="marketingStudio">
+ <div class="head marketing-head"><div><span class="marketing-mark">✦</span> Marketing Studio <small>Turn your finished book into launch artwork and a shareable page</small></div><span class="marketing-local">Local exports · No AI key required</span></div>
+ <div class="marketing-layout">
+  <div class="marketing-form">
+   <div class="sect">Campaign message</div>
+   <div class="field"><label for="marketingTagline">Hook / tagline</label><input id="marketingTagline" maxlength="110" placeholder="One compelling line that makes readers curious"></div>
+   <div class="field"><label for="marketingBlurb">Book description</label><textarea id="marketingBlurb" rows="5" maxlength="900" placeholder="A short, reader-friendly description of this book"></textarea></div>
+   <div class="field"><label for="marketingCTA">Call to action</label><input id="marketingCTA" maxlength="55" value="Discover the story"></div>
+   <div class="field"><label for="marketingURL">Store / order / reading link (optional)</label><input id="marketingURL" type="url" placeholder="https://…"></div>
+   <div class="row2">
+    <div class="field"><label for="marketingTheme">Campaign look</label><select id="marketingTheme"><option value="noir">Noir · Cinematic</option><option value="classic">Classic · Gold</option><option value="editorial">Editorial · Paper</option><option value="botanical">Botanical · Green</option><option value="modern">Modern · Electric</option></select></div>
+    <div class="field"><label for="marketingFormat">Social format</label><select id="marketingFormat"><option value="portrait">Portrait · 1080 × 1350</option><option value="square">Square · 1080 × 1080</option><option value="story">Story · 1080 × 1920</option></select></div>
+   </div>
+   <div class="field"><label for="marketingHashtags">Hashtags</label><input id="marketingHashtags" value="#BookLaunch #NewRelease #Readers"></div>
+   <div class="marketing-actions"><button type="button" class="primary wide" id="marketingExportPNG">Export social poster · PNG</button><button type="button" class="wide" id="marketingCopyCaption">Copy launch caption</button><button type="button" class="wide" id="marketingExportLanding">Export book landing page · HTML</button></div>
+   <p class="small muted">Poster PNG is ready to upload. Add your real shop / order link before promoting. The landing page and reader are portable files you can send or host.</p>
+  </div>
+  <div class="marketing-preview-column">
+   <div class="marketing-preview-head"><b>Live campaign preview</b><span id="marketingPreviewInfo">Instagram portrait</span></div>
+   <div class="marketing-canvas-wrap"><canvas id="marketingCanvas" width="1080" height="1350" aria-label="Book launch poster preview"></canvas></div>
+   <div class="marketing-output-note" id="marketingOutputNote">Cover art, title, author and campaign copy appear here.</div>
+  </div>
+ </div>
 </section>
 <div class="footer">BookFlow Studio · Personal, local-first workspace · Back up projects regularly</div></main>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script><script src="https://cdn.jsdelivr.net/npm/mammoth@1.9.1/mammoth.browser.min.js"></script><script type="module" src="/src/app.mjs"></script></body></html>
