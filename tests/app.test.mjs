@@ -87,3 +87,13 @@ test('marketing studio exports campaign PNG and landing page without requiring A
  assert.match(app,/function drawMarketingPoster/);assert.match(app,/function marketingCaptionText/);assert.match(app,/function exportMarketingLanding/);assert.match(app,/function exportMarketingPNG/);
  assert.match(html,/No AI key required/);assert.match(html,/1080 × 1350/);
 });
+
+test('marketing poster refreshes when the active book, cover artwork or book identity changes',()=>{
+ assert.match(app,/renderProjects\(\);refresh\(\);void drawMarketingPoster\(\)/);
+ assert.match(app,/\['title','author'\]\.forEach/);
+ assert.match(app,/void drawMarketingPoster\(\);catch/);
+});
+test('cover artwork and removal refresh both open production wrap and marketing artwork',()=>{
+ assert.match(app,/renderCoverSpread\(\);\}void drawMarketingPoster\(\)/);
+ assert.match(app,/exportCoverSVG2/);
+});
