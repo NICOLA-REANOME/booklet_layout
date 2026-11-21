@@ -66,7 +66,7 @@ test('cover editor, open/closed book studio, flat/3D modes and share export are 
 });
 test('shareable reader is self-contained, embeds images and escapes script-closing title text',()=>{
  const output=buildShareableReaderHTML({title:'Test </script>',author:'A',cover:{template:'classic',artwork:'data:image/png;base64,AA=='},pageWidth:340,pageHeight:480,pages:['<div class="book-page">Page 1</div>']});
- assert.match(output,/<!doctype html>/i);assert.match(output,/data:image\/png;base64,AA==/);assert.match(output,/book-turn/);assert.match(output,/Page 1/);
+ assert.match(output,/<!doctype html>/i);assert.match(output,/data:image\/png;base64,AA==/);assert.match(output,/class='turn'/);assert.match(output,/Page 1/);const script=output.match(/<script>([\\s\\S]*?)<\\/script>/);assert.ok(script,'inline reader controller is present');assert.doesNotThrow(()=>new Function(script[1]));
  assert.doesNotMatch(output,/<script>.*Test <\/script>/s);
  assert.doesNotMatch(output,/src=['"]https?:\/\//);
 });

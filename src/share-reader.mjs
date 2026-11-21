@@ -13,7 +13,7 @@ export function buildShareableReaderHTML(book) {
     ".cover-classic .front{background:radial-gradient(ellipse at 50% 42%,#4b3150,#1b2037 76%)}.cover-noir .front{background:linear-gradient(145deg,#0c121c,#242b35 62%,#11151c)}.cover-modern .front{background:linear-gradient(145deg,#1456a0,#152547 58%,#0d1220)}.cover-modern .cover-frame{border:0;border-left:5px solid var(--cover-accent);align-items:flex-start;text-align:left}.cover-modern .cover-title{font:800 34px/1.02 Arial,sans-serif}.cover-editorial .front{background:linear-gradient(145deg,#e9e1cf,#f7f1e7);color:#263247}.cover-botanical .front{background:radial-gradient(ellipse at 45% 30%,#355f4b,#142d28 75%)}.cover-minimal .front{background:#f1eee6;color:#202124}.cover-minimal .cover-frame{border:0;border-top:4px solid var(--cover-accent);align-items:flex-start;text-align:left}.cover-minimal .cover-title{font:700 36px/1.02 Georgia,serif}.cover-editorial .closed-back,.cover-minimal .closed-back{background:#e8e0cf;color:#263247}.mode-2d .closed-book{transform:none;filter:drop-shadow(8px 12px 12px #16223826)}",
     ".hidden{display:none!important}.nav{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}.hint{text-align:center;color:#66748a;font-size:12px;margin-top:12px}.foot{text-align:center;color:#68768d;font-size:11px;margin:15px}",
     "@media(max-width:650px){.bar{position:static}.stage{min-height:430px;padding:15px 4px}.closed-book{width:220px;height:320px}.actions{width:100%;justify-content:center}.wrap{margin:10px auto}}"
-  ].join("\\n");
+  ].join("\n");
   const script = [
     "const BOOK = " + safe + ";",
     "const $ = id => document.getElementById(id);",
@@ -32,7 +32,7 @@ export function buildShareableReaderHTML(book) {
     "$('openBtn').addEventListener('click',()=>{presentation='open';render()});$('prev').addEventListener('click',()=>flip('prev'));$('next').addEventListener('click',()=>flip('next'));",
     "document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')flip('next');if(e.key==='ArrowLeft')flip('prev')});window.addEventListener('resize',()=>{if(presentation==='open')resize()});",
     "$('documentTitle').textContent=BOOK.title||'Book reader';document.title=(BOOK.title||'Book')+' — BookFlow Reader';render();"
-  ].join("\\n");
+  ].join("\n");
   const markup = [
     "<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='theme-color' content='#e9edf3'><title>BookFlow Reader</title><style>/*__CSS__*/</style></head><body>",
     "<header class='bar'><div class='brand' id='documentTitle'>BookFlow Reader</div><div class='actions'><div class='group'><span>Presentation</span><button data-presentation='closed' class='active'>Closed cover</button><button data-presentation='open'>Open pages</button></div><div class='group'><span>View</span><button data-mode='3d' class='active'>3D Studio</button><button data-mode='2d'>2D Flat</button></div></div></header>",
@@ -40,6 +40,6 @@ export function buildShareableReaderHTML(book) {
     "<section id='openView' class='hidden'><div class='book-open' id='openBook' style='--page-width:340px;height:480px;width:690px'><div class='slot' id='left' style='width:340px'><div></div></div><div class='spine'></div><div class='slot' id='right' style='width:340px'><div></div></div><div class='turn' id='turn'><div class='face' id='faceFront'></div><div class='face back' id='faceBack'></div></div></div></section></div>",
     "<div class='nav'><button id='prev'>← Previous spread</button><span class='hint' id='label'>Closed front cover</span><button class='primary' id='next'>Turn page →</button><button id='openBtn'>Open book</button></div><p class='hint'>Page 1 starts on the right. Page 2 appears on the left after the first turn. Use the arrow keys or controls to navigate.</p><p class='foot'>Standalone BookFlow Reader · All book text and images are embedded in this file · No account or internet connection required</p></main>",
     "<script>/*__SCRIPT__*/</script></body></html>"
-  ].join("\\n");
+  ].join("\n");
   return markup.replace("/*__CSS__*/", css).replace("/*__SCRIPT__*/", script);
 }
