@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSignatures, createImposition, calculateImpositionGeometry, getPageDimensions, paginateManuscript } from '../src/engine.mjs';
+import { buildSignatures, createImposition, calculateImpositionGeometry, getPageDimensions, paginateManuscript, getBookSpread, getBookSpreadForPage } from '../src/engine.mjs';
 
 const flatten = result => result.spreads.flatMap(s => [...s.front, ...s.back]).filter(p => p !== null).sort((a,b)=>a-b);
 
@@ -122,4 +122,14 @@ test('image blocks preserve explicit width, height, and X/Y offsets',()=>{
 });
 test('invalid printer-safe edge allowances are rejected',()=>{
   assert.throws(() => calculateImpositionGeometry({pageW:148,pageH:210,sheetW:297,sheetH:210,fitMode:'safe',safeEdgeMarginMm:110}),/edge margin/);
+});
+
+test('English book page order places page 1 right and following even/odd pages left/right',()=>{
+ assert.deepEqual(getBookSpread(1,0),{spreadIndex:0,leftIndex:-1,rightIndex:0,leftPage:null,rightPage:1,maxSpread:0,hasPrevious:false,hasNext:false});
+ assert.deepEqual(getBookSpread(22,1),{spreadIndex:1,leftIndex:1,rightIndex:2,leftPage:2,rightPage:3,maxSpread:11,hasPrevious:true,hasNext:true});
+ assert.equal(getBookSpread(22,11).leftPage,22);assert.equal(getBookSpread(22,11).rightPage,null);
+ assert.equal(getBookSpreadForPage(0,22),0);assert.equal(getBookSpreadForPage(1,22),1);assert.equal(getBookSpreadForPage(2,22),1);assert.equal(getBookSpreadForPage(3,22),2);
+});
+test('book spread mapping rejects invalid reader pages and spread indexes',()=>{
+ assert.throws(()=>getBookSpread(0,0),/at least one/);assert.throws(()=>getBookSpread(5,3),/outside/);assert.throws(()=>getBookSpreadForPage(5,5),/outside/);
 });

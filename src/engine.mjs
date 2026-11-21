@@ -10,6 +10,20 @@ export function getPageDimensions(s){
   if(s.orientation!=='landscape'&&width>height)[width,height]=[height,width];
   return {width,height};
 }
+/** English left-to-right reading order: page 1 on the right; page 2 on the left. */
+export function getBookSpreadForPage(pageIndex,pageCount){
+  if(!Number.isInteger(pageCount)||pageCount<1)throw new RangeError('Book must contain at least one reader page.');
+  if(!Number.isInteger(pageIndex)||pageIndex<0||pageIndex>=pageCount)throw new RangeError('Reader page index is outside the book.');
+  return pageIndex===0?0:Math.ceil(pageIndex/2);
+}
+export function getBookSpread(pageCount,spreadIndex){
+  if(!Number.isInteger(pageCount)||pageCount<1)throw new RangeError('Book must contain at least one reader page.');
+  const maxSpread=Math.ceil((pageCount-1)/2);
+  if(!Number.isInteger(spreadIndex)||spreadIndex<0||spreadIndex>maxSpread)throw new RangeError('Book spread is outside the available pages.');
+  const leftIndex=spreadIndex===0?-1:spreadIndex*2-1;
+  const rightIndex=spreadIndex===0?0:spreadIndex*2;
+  return {spreadIndex,leftIndex,rightIndex,leftPage:leftIndex>=0&&leftIndex<pageCount?leftIndex+1:null,rightPage:rightIndex<pageCount?rightIndex+1:null,maxSpread,hasPrevious:spreadIndex>0,hasNext:spreadIndex<maxSpread};
+}
 export function getSheetDimensions(s){
   let width=Number(s.sheetW??297),height=Number(s.sheetH??210);
   if(!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0)throw new RangeError('Physical sheet width and height must be positive.');

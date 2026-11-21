@@ -1,10 +1,13 @@
-import {PAPER_MM,getPageDimensions,getSheetDimensions,calculateImpositionGeometry,createImposition,paginateManuscript} from './engine.mjs';
+import {PAPER_MM,getPageDimensions,getSheetDimensions,calculateImpositionGeometry,createImposition,paginateManuscript,getBookSpread,getBookSpreadForPage} from './engine.mjs';
+import {buildShareableReaderHTML} from './share-reader.mjs';
 const $=id=>document.getElementById(id),KEY='bookflow-projects-v2',MM=72/25.4;
-let projects=[],activeId='',layouts=[],pageIndex=0,undo=[],redo=[],previousText='',imageAssets=[],activePreviewView='reader',bookSpreadIndex=0,bookFlipBusy=false,bookFlipToken=0;
-const def=()=>({id:'book-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),title:'Untitled book',author:'',text:'',images:[],settings:{wordHeaderText:'',wordFooterText:'',wordHeaderAlign:'center',wordFooterAlign:'center',wordToc:true,pagePreset:'A5',pageW:148,pageH:210,orientation:'portrait',fontSize:11,columns:1,lineSpacing:1.4,align:'left',topMargin:18,bottomMargin:18,innerMargin:18,outerMargin:14,gutter:5,pageNumbers:true,chapterStart:true,sheetPreset:'A4',sheetW:297,sheetH:210,sheetOrientation:'landscape',printer:'et4850',hpModel:'unknown',mode:'auto',signature:32,fit:'fit',safeMargin:5,customScale:100,flip:'long',backOrder:'same',marks:false},updated:Date.now()});
+let projects=[],activeId='',layouts=[],pageIndex=0,undo=[],redo=[],previousText='',imageAssets=[],activePreviewView='reader',bookSpreadIndex=0,bookFlipBusy=false,bookFlipToken=0,bookPresentation='open',bookVisualMode='3d',coverArtworkData='';
+const DEFAULT_COVER={template:'classic',kicker:'A NOVEL',subtitle:'',backText:'',accent:'#d7b66e',artwork:''};
+const def=()=>({id:'book-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),title:'Untitled book',author:'',text:'',images:[],cover:{...DEFAULT_COVER},settings:{wordHeaderText:'',wordFooterText:'',wordHeaderAlign:'center',wordFooterAlign:'center',wordToc:true,pagePreset:'A5',pageW:148,pageH:210,orientation:'portrait',fontSize:11,columns:1,lineSpacing:1.4,align:'left',topMargin:18,bottomMargin:18,innerMargin:18,outerMargin:14,gutter:5,pageNumbers:true,chapterStart:true,sheetPreset:'A4',sheetW:297,sheetH:210,sheetOrientation:'landscape',printer:'et4850',hpModel:'unknown',mode:'auto',signature:32,fit:'fit',safeMargin:5,customScale:100,flip:'long',backOrder:'same',marks:false},updated:Date.now()});
 const active=()=>projects.find(p=>p.id===activeId)||projects[0];
+function readCoverSettings(){return {template:$('coverTemplate')?.value||DEFAULT_COVER.template,kicker:$('coverKicker')?.value.trim()||'',subtitle:$('coverSubtitle')?.value.trim()||'',backText:$('coverBackText')?.value.trim()||'',accent:$('coverAccent')?.value||DEFAULT_COVER.accent,artwork:coverArtworkData||''};}
 function readSettings(){return {wordHeaderText:$('wordHeader').value,wordFooterText:$('wordFooter').value,wordHeaderAlign:$('wordHeaderAlign').value,wordFooterAlign:$('wordFooterAlign').value,wordToc:$('wordToc').checked,pageSize:$('pagePreset').value,pageW:+$('pageW').value,pageH:+$('pageH').value,orientation:$('orientation').value,fontSize:+$('fontSize').value,columns:+$('columns').value,lineSpacing:+$('lineSpacing').value,textAlign:$('align').value,marginTop:+$('topMargin').value,marginBottom:+$('bottomMargin').value,marginInner:+$('innerMargin').value,marginOuter:+$('outerMargin').value,gutter:+$('gutter').value,pageNumbers:$('pageNumbers').checked,chapterNewPage:$('chapterStart').checked,sheetSize:$('sheetPreset').value,sheetW:+$('sheetW').value,sheetH:+$('sheetH').value,sheetOrientation:$('sheetOrientation').value,printerProfile:$('printer').value,hpModel:$('hpModel')?.value||'unknown',printMode:$('mode').value,signatureSize:+$('signature').value,fitMode:$('fit').value,safeEdgeMarginMm:+$('safeMargin').value,customScalePercent:+$('customScale').value,flipEdge:$('flip').value,backOrder:$('backOrder').value,cropMarks:$('marks').checked};}
-function sync(){const p=active();if(!p)return;p.title=$('title').value.trim()||'Untitled book';p.author=$('author').value.trim();p.text=$('manuscript').value;p.images=Array.isArray(imageAssets)?imageAssets:[];p.settings={...p.settings,...fromUI()};p.updated=Date.now();}
+function sync(){const p=active();if(!p)return;p.title=$('title').value.trim()||'Untitled book';p.author=$('author').value.trim();p.text=$('manuscript').value;p.images=Array.isArray(imageAssets)?imageAssets:[];p.cover=readCoverSettings();p.settings={...p.settings,...fromUI()};p.updated=Date.now();}
 function fromUI(){return {wordHeaderText:$('wordHeader').value,wordFooterText:$('wordFooter').value,wordHeaderAlign:$('wordHeaderAlign').value,wordFooterAlign:$('wordFooterAlign').value,wordToc:$('wordToc').checked,pagePreset:$('pagePreset').value,pageW:+$('pageW').value,pageH:+$('pageH').value,orientation:$('orientation').value,fontSize:+$('fontSize').value,columns:+$('columns').value,lineSpacing:+$('lineSpacing').value,align:$('align').value,topMargin:+$('topMargin').value,bottomMargin:+$('bottomMargin').value,innerMargin:+$('innerMargin').value,outerMargin:+$('outerMargin').value,gutter:+$('gutter').value,pageNumbers:$('pageNumbers').checked,chapterStart:$('chapterStart').checked,sheetPreset:$('sheetPreset').value,sheetW:+$('sheetW').value,sheetH:+$('sheetH').value,sheetOrientation:$('sheetOrientation').value,printer:$('printer').value,hpModel:$('hpModel')?.value||'unknown',mode:$('mode').value,signature:+$('signature').value,fit:$('fit').value,safeMargin:+$('safeMargin').value,customScale:+$('customScale').value,flip:$('flip').value,backOrder:$('backOrder').value,marks:$('marks').checked};}
 const DB_NAME='BookFlowStudioDB',DB_VERSION=1;
 let dbPromise=null,saveTimer=null,lastStorageError='',fullSaveNeeded=true;const deletedProjectIds=new Set();
@@ -80,7 +83,7 @@ function renderProjects(){
   tools.append(duplicate,remove);row.append(select,tools);box.append(row);
  }
 }
-function loadActive(){const p=active()||def();const s={...def().settings,...p.settings};$('title').value=p.title||'Untitled book';$('author').value=p.author||'';$('manuscript').value=p.text||'';for(const [k,v] of Object.entries(s)){let id=k==='wordHeaderText'?'wordHeader':k==='wordFooterText'?'wordFooter':k==='wordHeaderAlign'?'wordHeaderAlign':k==='wordFooterAlign'?'wordFooterAlign':k==='wordToc'?'wordToc':k==='pagePreset'?'pagePreset':k==='sheetPreset'?'sheetPreset':k==='signature'?'signature':k==='customScale'?'customScale':k;let el=$(id);if(!el)continue;if(el.type==='checkbox')el.checked=!!v;else el.value=String(v);}previousText=$('manuscript').value;imageAssets=Array.isArray(p.images)?p.images:[];pageIndex=0;undo=[];redo=[];renderProjects();refresh();}
+function loadActive(){const p=active()||def();const s={...def().settings,...p.settings};$('title').value=p.title||'Untitled book';$('author').value=p.author||'';$('manuscript').value=p.text||'';for(const [k,v] of Object.entries(s)){let id=k==='wordHeaderText'?'wordHeader':k==='wordFooterText'?'wordFooter':k==='wordHeaderAlign'?'wordHeaderAlign':k==='wordFooterAlign'?'wordFooterAlign':k==='wordToc'?'wordToc':k==='pagePreset'?'pagePreset':k==='sheetPreset'?'sheetPreset':k==='signature'?'signature':k==='customScale'?'customScale':k;let el=$(id);if(!el)continue;if(el.type==='checkbox')el.checked=!!v;else el.value=String(v);}previousText=$('manuscript').value;imageAssets=Array.isArray(p.images)?p.images:[];const cover={...DEFAULT_COVER,...(p.cover||{})};$('coverTemplate').value=cover.template;$('coverKicker').value=cover.kicker;$('coverSubtitle').value=cover.subtitle;$('coverBackText').value=cover.backText;$('coverAccent').value=cover.accent;coverArtworkData=cover.artwork||'';$('coverImageStatus').textContent=coverArtworkData?'Cover artwork loaded.':'No cover artwork selected.';pageIndex=0;bookSpreadIndex=0;bookPresentation='open';undo=[];redo=[];renderProjects();refresh();}
 function newBook(){sync();store();let p=def();p.title='Untitled book '+(projects.length+1);projects.unshift(p);activeId=p.id;loadActive();}
 function pdfReady(){if(!window.PDFLib?.PDFDocument)throw Error('PDF library did not load. Check internet access and refresh.');}
 function pt(mm){return mm*MM;}
@@ -129,13 +132,13 @@ function renderReader(){const s=readSettings(),d=getPageDimensions(s),w=Math.min
  for(let c=0;c<pg.columns.length;c++)for(const l of pg.columns[c]){const columnLeft=s.marginInner+s.gutter+c*(cw+gap),topPx=(s.marginTop+l.yTopPt*25.4/72)*scale;if(l.kind==='image'){const im=imageAssets.find(x=>x.id===l.imageId);if(!im)continue;const wm=l.imageWidthPt*25.4/72,hm=l.imageHeightPt*25.4/72,baseLeft=columnLeft+(l.imageAlign==='right'?cw-wm:l.imageAlign==='center'?(cw-wm)/2:0),lm=baseLeft+(l.imageOffsetXPt||0)*25.4/72,img=document.createElement('img');img.className='paperimage';img.alt=im.caption||im.name||'Book illustration';img.src=im.data;img.style.left=(lm*scale)+'px';img.style.top=((s.marginTop+(l.yTopPt+(l.imageOffsetYPt||0))*25.4/72)*scale)+'px';img.style.width=(wm*scale)+'px';img.style.height=(hm*scale)+'px';host.append(img);if(l.caption){const cap=document.createElement('div');cap.className='papercaption';cap.textContent=l.caption;cap.style.left=(lm*scale)+'px';cap.style.top=((s.marginTop+(l.yTopPt+(l.imageOffsetYPt||0)+l.imageHeightPt+3)*25.4/72)*scale)+'px';cap.style.width=(wm*scale)+'px';host.append(cap);}continue;}if(l.kind==='blank'||!l.text)continue;const el=document.createElement('div');el.className='paperline';el.textContent=l.text;el.style.left=(columnLeft*scale)+'px';el.style.top=topPx+'px';el.style.width=(cw*scale)+'px';el.style.fontSize=(s.fontSize*25.4/72*scale)+'px';if(l.kind==='heading')el.style.fontWeight='bold';el.style.textAlign=s.textAlign||'left';host.append(el);}
  $('pagenum').textContent=s.pageNumbers?pageIndex+1:'';$('pagenum').style.display=s.pageNumbers?'block':'none';$('prev').disabled=pageIndex===0;$('next').disabled=pageIndex>=layouts.length-1;}
 
-function bookSpreadForPage(index){return index<=0?0:Math.ceil(index/2);}
-function bookLeftIndex(spread){return spread===0?-1:spread*2-1;}
-function bookRightIndex(spread){return spread===0?0:spread*2;}
+function bookSpreadForPage(index){return getBookSpreadForPage(index,layouts.length);}
+function bookLeftIndex(spread){return getBookSpread(layouts.length,spread).leftIndex;}
+function bookRightIndex(spread){return getBookSpread(layouts.length,spread).rightIndex;}
 function renderBookPage(slot,index,pageWidth){
  slot.replaceChildren();const s=readSettings(),d=getPageDimensions(s),scale=pageWidth/d.width,page=document.createElement('div');
  page.className='book-page'+(index<0?' blank-page':'');page.style.width=pageWidth+'px';page.style.height=(d.height*scale)+'px';
- if(index<0){const blank=document.createElement('div');blank.className='book-blank-label';blank.textContent='Inside cover';page.append(blank);slot.append(page);return;}
+ if(index<0){slot.append(page);return;}
  const content=document.createElement('div');content.className='book-page-content';page.append(content);
  const pg=layouts[index]||{columns:[[]]},usable=d.width-s.marginInner-s.gutter-s.marginOuter,gap=5,cw=(usable-(s.columns-1)*gap)/s.columns;
  for(let c=0;c<pg.columns.length;c++)for(const l of pg.columns[c]){
@@ -153,26 +156,62 @@ function renderBookPage(slot,index,pageWidth){
  slot.append(page);
 }
 function renderBookSpread(leftIndex,rightIndex,pageWidth){renderBookPage($('bookLeft'),leftIndex,pageWidth);renderBookPage($('bookRight'),rightIndex,pageWidth);}
+function renderClosedCover(){
+ const cover=readCoverSettings(),template=['classic','noir','modern','editorial','botanical','minimal'].includes(cover.template)?cover.template:'classic',book=$('closedBook');
+ book.className='closed-book cover-'+template;book.style.setProperty('--cover-accent',cover.accent||DEFAULT_COVER.accent);
+ $('closedCoverTitle').textContent=$('title').value.trim()||'Untitled book';$('closedCoverSubtitle').textContent=cover.subtitle;$('closedCoverKicker').textContent=cover.kicker;
+ $('closedCoverAuthor').textContent=$('author').value.trim()?('By '+$('author').value.trim()):'';$('closedSpineTitle').textContent=$('title').value.trim()||'Untitled book';
+ const excerpt=String($('manuscript').value||'').split(/\n\s*\n/).map(x=>x.replace(/^#+\s*/,'').trim()).find(x=>x&&!/^\[/.test(x))||'';
+ $('closedBackText').textContent=cover.backText||excerpt.slice(0,520);
+ const image=$('closedCoverImage');if(cover.artwork){image.src=cover.artwork;image.classList.remove('hidden');}else{image.removeAttribute('src');image.classList.add('hidden');}
+}
 function renderBookPreview(){
  if(activePreviewView!=='book')return;
- const viewport=$('bookViewport'),width=Math.max(320,viewport.clientWidth||viewport.getBoundingClientRect().width||640),pageWidth=Math.max(145,Math.min(340,(width-34)/2)),maxSpread=Math.ceil(Math.max(0,layouts.length-1)/2);
- bookSpreadIndex=Math.max(0,Math.min(bookSpreadIndex,maxSpread));$('bookOpen').style.setProperty('--book-page-width',pageWidth+'px');const pageDims=getPageDimensions(readSettings());$('bookOpen').style.height=(pageDims.height*pageWidth/pageDims.width)+'px';
- const left=bookLeftIndex(bookSpreadIndex),right=bookRightIndex(bookSpreadIndex);renderBookSpread(left,right,pageWidth);
- $('bookPageLabel').textContent=bookSpreadIndex===0?'Opening · Page 1':('Pages '+(left+1)+'–'+Math.min(right+1,layouts.length));
- $('bookPrev').disabled=bookSpreadIndex<=0;$('bookNext').disabled=bookLeftIndex(bookSpreadIndex+1)>=layouts.length;
- $('bookHint').textContent='Turn the page to proofread the next spread · '+layouts.length+' pages total';
+ const wrap=$('bookPreviewWrap'),openView=$('bookOpenView'),closedView=$('bookClosedView');
+ wrap.classList.toggle('book-mode-flat',bookVisualMode==='2d');wrap.classList.toggle('book-mode-3d',bookVisualMode==='3d');
+ openView.classList.toggle('hidden',bookPresentation!=='open');closedView.classList.toggle('hidden',bookPresentation!=='closed');
+ document.querySelectorAll('[data-book-presentation]').forEach(b=>{const on=b.dataset.bookPresentation===bookPresentation;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+ document.querySelectorAll('[data-book-style]').forEach(b=>{const on=b.dataset.bookStyle===bookVisualMode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});
+ renderClosedCover();
+ if(bookPresentation==='closed'){$('bookPageLabel').textContent='Closed front cover · '+($('title').value.trim()||'Untitled book');return;}
+ const viewport=$('bookViewport'),width=Math.max(320,viewport.clientWidth||viewport.getBoundingClientRect().width||640),pageWidth=Math.max(145,Math.min(340,(width-34)/2)),pageDims=getPageDimensions(readSettings()),spread=getBookSpread(layouts.length,bookSpreadIndex);
+ $('bookOpen').style.setProperty('--book-page-width',pageWidth+'px');$('bookOpen').style.height=(pageDims.height*pageWidth/pageDims.width)+'px';
+ renderBookSpread(spread.leftIndex,spread.rightIndex,pageWidth);
+ $('bookPageLabel').textContent=spread.leftPage&&spread.rightPage?'Pages '+spread.leftPage+'–'+spread.rightPage:spread.leftPage?'Page '+spread.leftPage+' · final page':'Opening · Page 1 on the right';
+ $('bookPrev').disabled=!spread.hasPrevious;$('bookNext').disabled=!spread.hasNext;
+ $('bookHint').textContent='Page 1 starts on the right; page 2 turns to the left · '+layouts.length+' reader pages';
 }
 function flipBook(direction){
- if(bookFlipBusy)return;
- const from=bookSpreadIndex,to=direction==='forward'?from+1:from-1,maxSpread=Math.ceil(Math.max(0,layouts.length-1)/2);if(to<0||to>maxSpread)return;
- bookFlipBusy=true;const token=++bookFlipToken,viewport=$('bookViewport'),width=Math.max(320,viewport.clientWidth||viewport.getBoundingClientRect().width||640),pageWidth=Math.max(145,Math.min(340,(width-34)/2)),turn=$('bookTurn'),front=$('bookTurnFront'),back=$('bookTurnBack');
- const pageDims=getPageDimensions(readSettings());$('bookOpen').style.setProperty('--book-page-width',pageWidth+'px');$('bookOpen').style.height=(pageDims.height*pageWidth/pageDims.width)+'px';const currentLeft=bookLeftIndex(from),currentRight=bookRightIndex(from),nextLeft=bookLeftIndex(to),nextRight=bookRightIndex(to);
- if(direction==='forward'){renderBookSpread(currentLeft,nextRight,pageWidth);renderBookPage(front,currentRight,pageWidth);renderBookPage(back,nextLeft,pageWidth);turn.className='book-turn forward';turn.style.left='50%';turn.style.right='0';turn.style.transformOrigin='left center';}
- else{renderBookSpread(nextLeft,currentRight,pageWidth);renderBookPage(front,currentLeft,pageWidth);renderBookPage(back,nextRight,pageWidth);turn.className='book-turn backward';turn.style.left='0';turn.style.right='50%';turn.style.transformOrigin='right center';}
- turn.style.transform='rotateY(0deg)';
- const settle=()=>{if(!bookFlipBusy||token!==bookFlipToken)return;bookFlipBusy=false;turn.className='book-turn';turn.style.transform='rotateY(0deg)';bookSpreadIndex=to;pageIndex=Math.min(layouts.length-1,bookRightIndex(to)>=layouts.length?Math.max(0,bookLeftIndex(to)):bookRightIndex(to));$('pageIndex').textContent='Page '+(pageIndex+1)+' / '+layouts.length;$('pageLabel').textContent='Page '+(pageIndex+1)+' of '+layouts.length;renderBookPreview();renderReader();};
- turn.addEventListener('transitionend',function done(e){if(e.propertyName!=='transform')return;turn.removeEventListener('transitionend',done);settle();});
- requestAnimationFrame(()=>requestAnimationFrame(()=>{turn.style.transform=direction==='forward'?'rotateY(-180deg)':'rotateY(180deg)';}));setTimeout(settle,850);
+ if(bookFlipBusy||bookPresentation!=='open')return;
+ const from=bookSpreadIndex,to=direction==='forward'?from+1:from-1,current=getBookSpread(layouts.length,bookSpreadIndex);
+ if(to<0||to>current.maxSpread)return;
+ if(bookVisualMode==='2d'){bookSpreadIndex=to;const target=getBookSpread(layouts.length,to);pageIndex=target.leftIndex>=0?target.leftIndex:0;renderBookPreview();renderReader();return;}
+ bookFlipBusy=true;const token=++bookFlipToken,viewport=$('bookViewport'),width=Math.max(320,viewport.clientWidth||viewport.getBoundingClientRect().width||640),pageWidth=Math.max(145,Math.min(340,(width-34)/2)),turn=$('bookTurn'),front=$('bookTurnFront'),back=$('bookTurnBack'),pageDims=getPageDimensions(readSettings()),target=getBookSpread(layouts.length,to);
+ $('bookOpen').style.setProperty('--book-page-width',pageWidth+'px');$('bookOpen').style.height=(pageDims.height*pageWidth/pageDims.width)+'px';
+ if(direction==='forward'){
+  renderBookSpread(current.leftIndex,target.rightIndex,pageWidth);renderBookPage(front,current.rightIndex,pageWidth);renderBookPage(back,target.leftIndex,pageWidth);
+  turn.className='book-turn forward';turn.style.left='50%';turn.style.right='0';turn.style.transformOrigin='left center';
+ }else{
+  renderBookSpread(target.leftIndex,current.rightIndex,pageWidth);renderBookPage(front,current.leftIndex,pageWidth);renderBookPage(back,target.rightIndex,pageWidth);
+  turn.className='book-turn backward';turn.style.left='0';turn.style.right='50%';turn.style.transformOrigin='right center';
+ }
+ turn.style.transition='';turn.style.transform='rotateY(0deg)';void turn.offsetWidth;
+ let settled=false,timer=0;
+ const settle=()=>{
+  if(settled||token!==bookFlipToken)return;settled=true;clearTimeout(timer);turn.removeEventListener('transitionend',onEnd);bookFlipBusy=false;
+  // Reset with transitions disabled; otherwise the completed leaf visibly flips back to zero.
+  turn.style.transition='none';turn.className='book-turn';turn.style.left='50%';turn.style.right='0';turn.style.transformOrigin='left center';turn.style.transform='rotateY(0deg)';front.replaceChildren();back.replaceChildren();
+  bookSpreadIndex=to;pageIndex=target.leftIndex>=0?target.leftIndex:0;renderBookPreview();renderReader();void turn.offsetHeight;requestAnimationFrame(()=>{turn.style.transition='';});
+ };
+ const onEnd=e=>{if(e.target===turn&&e.propertyName==='transform')settle();};
+ turn.addEventListener('transitionend',onEnd);requestAnimationFrame(()=>requestAnimationFrame(()=>{turn.style.transform=direction==='forward'?'rotateY(-180deg)':'rotateY(180deg)';}));timer=setTimeout(settle,900);
+}
+function exportShareableReader(){
+ sync();if(!layouts.length)throw new Error('Add some manuscript text before exporting a reader.');
+ const renderWidth=340,d=getPageDimensions(readSettings()),pages=layouts.map((_,i)=>{const host=document.createElement('div');renderBookPage(host,i,renderWidth);return host.innerHTML;});
+ const payload={title:$('title').value.trim()||'Untitled book',author:$('author').value.trim(),cover:readCoverSettings(),pageWidth:renderWidth,pageHeight:d.height*renderWidth/d.width,pages};
+ const html=buildShareableReaderHTML(payload);download(html,filename('interactive-reader','html'),'text/html;charset=utf-8');
+ status('Standalone interactive reader exported. Send the .html file as an attachment; it contains the formatted pages, cover and embedded images.','good');
 }
 function imposition(){return createImposition(layouts.length,+$('signature').value);}
 function renderSheets(){try{let r=imposition(),box=$('sheetList');box.replaceChildren();$('sheetSummary').textContent=r.readerPageCount+' reader pages → '+r.imposedPageCount+' imposed pages; '+r.blankPageCount+' padding blanks; '+r.physicalSheetsDuplex+' physical sheets when duplexed.';for(const s of r.spreads.slice(0,12)){for(const side of ['front','back']){let card=document.createElement('div');card.className='sheet';let head=document.createElement('b');head.textContent='Sheet '+(s.sheetIndex+1)+' · '+side;let spread=document.createElement('div');spread.className='spread';for(const n of s[side]){let cell=document.createElement('div');cell.textContent=n===null?'Blank':'Page '+n;spread.append(cell);}card.append(head,spread);box.append(card);}}if(r.spreads.length>12){let note=document.createElement('div');note.className='note info';note.textContent='Showing the first 12 sheets. Export includes all pages.';box.append(note);}}catch(e){$('sheetSummary').textContent=e.message;}}
@@ -292,6 +331,13 @@ $('textStyle').onchange=()=>{const e=$('manuscript'),a=e.selectionStart,b=e.sele
 $('manuscript').oninput=()=>{if($('manuscript').value!==previousText){undo.push(previousText);if(undo.length>80)undo.shift();redo=[];previousText=$('manuscript').value;}refresh();};
 $('undo').onclick=()=>{if(!undo.length)return;redo.push($('manuscript').value);$('manuscript').value=undo.pop();previousText=$('manuscript').value;refresh();};$('redo').onclick=()=>{if(!redo.length)return;undo.push($('manuscript').value);$('manuscript').value=redo.pop();previousText=$('manuscript').value;refresh();};
 $('prev').onclick=()=>{pageIndex=Math.max(0,pageIndex-1);refresh();};$('next').onclick=()=>{pageIndex=Math.min(layouts.length-1,pageIndex+1);refresh();};$('bookPrev').onclick=()=>flipBook('backward');$('bookNext').onclick=()=>flipBook('forward');
+document.querySelectorAll('[data-book-presentation]').forEach(b=>b.addEventListener('click',()=>{bookPresentation=b.dataset.bookPresentation;renderBookPreview();}));
+document.querySelectorAll('[data-book-style]').forEach(b=>b.addEventListener('click',()=>{bookVisualMode=b.dataset.bookStyle;renderBookPreview();}));
+$('exportShareableReader').onclick=()=>{try{exportShareableReader();}catch(e){status(e.message,'warn');alert(e.message);}};
+['coverTemplate','coverKicker','coverSubtitle','coverBackText','coverAccent'].forEach(id=>$(id).addEventListener('input',()=>{sync();store();if(activePreviewView==='book')renderClosedCover();}));
+$('coverImageFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const cover=await normaliseBookImage(await readFileDataURL(file),file.name);coverArtworkData=cover.data;sync();store();$('coverImageStatus').textContent='Cover artwork loaded · '+file.name;if(activePreviewView==='book')renderClosedCover();}catch(err){alert('Cover image failed: '+err.message);}finally{e.target.value='';}});
+$('removeCoverImage').onclick=()=>{coverArtworkData='';sync();store();$('coverImageStatus').textContent='No cover artwork selected.';if(activePreviewView==='book')renderClosedCover();};
+
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{activePreviewView=b.dataset.view;document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x===b));$('readerView').classList.toggle('hidden',activePreviewView!=='reader');$('bookView').classList.toggle('hidden',activePreviewView!=='book');$('sheetsView').classList.toggle('hidden',activePreviewView!=='sheets');$('checksView').classList.toggle('hidden',activePreviewView!=='checks');if(activePreviewView==='book'){bookSpreadIndex=bookSpreadForPage(pageIndex);renderBookPreview();}});
 const ids=['title','author','wordHeader','wordFooter','wordHeaderAlign','wordFooterAlign','wordToc','pagePreset','pageW','pageH','orientation','fontSize','columns','lineSpacing','align','topMargin','bottomMargin','innerMargin','outerMargin','gutter','pageNumbers','chapterStart','sheetPreset','sheetW','sheetH' ,'sheetOrientation','printer','hpModel','mode','signature','fit','customScale','flip','backOrder','marks'];
 for(const id of ids)$(id).addEventListener('change',()=>{if(id==='pagePreset'&&PAPER_MM[$('pagePreset').value]){let [w,h]=PAPER_MM[$('pagePreset').value];$('pageW').value=w;$('pageH').value=h;}if(id==='sheetPreset'&&PAPER_MM[$('sheetPreset').value]){let [w,h]=PAPER_MM[$('sheetPreset').value];if($('sheetOrientation').value==='landscape'){$('sheetW').value=Math.max(w,h);$('sheetH').value=Math.min(w,h);}else{$('sheetW').value=Math.min(w,h);$('sheetH').value=Math.max(w,h);}}if(id==='printer'){if($('printer').value==='l8050')$('mode').value='manual';if($('printer').value==='hp400'||$('printer').value==='other')$('mode').value='manual';if($('printer').value==='et4850')$('mode').value='auto';if($('printer').value==='hp400'&&$('hpModel').value!=='m401dn'&&$('hpModel').value!=='m401dw')$('mode').value='manual';}if(id==='hpModel')$('mode').value=['m401dn','m401dw'].includes($('hpModel').value)?'auto':'manual';pageIndex=0;refresh();});
