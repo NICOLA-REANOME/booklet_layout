@@ -79,7 +79,7 @@ function renderProjects(){
   select.append(name,count);select.onclick=()=>{if(p.id===activeId)return;sync();store();activeId=p.id;loadActive();};
   const tools=document.createElement('div');tools.className='project-actions';
   const duplicate=document.createElement('button');duplicate.type='button';duplicate.className='project-icon';duplicate.title='Duplicate book';duplicate.setAttribute('aria-label','Duplicate '+(p.title||'book'));duplicate.textContent='⧉';
-  duplicate.onclick=()=>{sync();const copy=JSON.parse(JSON.stringify(p));copy.id='book-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);copy.title=(p.title||'Untitled book')+' — Copy';copy.updated=Date.now();projects.unshift(copy);activeId=copy.id;loadActive();store(true);};
+  duplicate.onclick=()=>{sync();const copy=JSON.parse(JSON.stringify(p));copy.id='book-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);copy.title=(p.title||'Untitled book')+' — Copy';copy.updated=Date.now();projects.unshift(copy);activeId=copy.id;loadActive();store(true);void drawMarketingPoster();};
   const remove=document.createElement('button');remove.type='button';remove.className='project-icon danger';remove.title='Delete book';remove.setAttribute('aria-label','Delete '+(p.title||'book'));remove.textContent='×';
   remove.onclick=()=>{if(!confirm('Delete "'+(p.title||'Untitled book')+'"? This cannot be undone. Export a backup first if you need it.'))return;deletedProjectIds.add(p.id);projects=projects.filter(x=>x.id!==p.id);if(!projects.length){const fresh=def();fresh.title='My Book';projects=[fresh];}if(activeId===p.id)activeId=projects[0].id;loadActive();store(true);};
   tools.append(duplicate,remove);row.append(select,tools);box.append(row);
@@ -271,6 +271,78 @@ function exportCoverSpreadSVG(){
  ].join('');
  download(svg,filename('cover-spread','svg'),'image/svg+xml;charset=utf-8');status('Full wrap SVG downloaded. Open in CorelDRAW and confirm spine/bleed with your print vendor before production.','good');
 }
+function wrapCanvasText(ctx,text,x,y,maxWidth,lineHeight,maxLines=3){
+ const words=String(text||'').split(/\s+/).filter(Boolean),lines=[];let line='';
+ for(const word of words){const test=(line+' '+word).trim();if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=word;}else line=test;}
+ if(line)lines.push(line);
+ const shown=lines.slice(0,maxLines);if(lines.length>maxLines&&shown.length){let last=shown[shown.length-1];while(last.length&&ctx.measureText(last+'…').width>maxWidth)last=last.slice(0,-1);shown[shown.length-1]=last+'…';}
+ shown.forEach((line,i)=>ctx.fillText(line,x,y+i*lineHeight));return y+shown.length*lineHeight;
+}
+function marketingCaptionText(){
+ const m=readMarketingSettings(),title=$('title').value.trim()||'A new book',author=$('author').value.trim(),url=m.url.trim();
+ return [title+(author?' — '+author:''),m.tagline,m.blurb,m.cta+(url?' · '+url:''),m.hashtags].filter(Boolean).join('\n\n');
+}
+async function drawMarketingPoster(){
+ const canvas=$('marketingCanvas');if(!canvas)return;
+ const m=readMarketingSettings(),format=m.format,dimensions=format==='square'?[1080,1080]:format==='story'?[1080,1920]:[1080,1350],[W,H]=dimensions;
+ canvas.width=W;canvas.height=H;
+ const ctx=canvas.getContext('2d'),themes={
+  noir:{a:'#111827',b:'#2d3b58',accent:'#d8bd79',ink:'#fff8e9',muted:'#d9dce4'},
+  classic:{a:'#241d31',b:'#67495a',accent:'#e1c27b',ink:'#fff8e9',muted:'#e7dcca'},
+  editorial:{a:'#f4eee2',b:'#e4dac8',accent:'#8e734d',ink:'#263247',muted:'#5f6470'},
+  botanical:{a:'#102c26',b:'#37644e',accent:'#d4dda9',ink:'#f4f4e7',muted:'#d4e2d8'},
+  modern:{a:'#0d2851',b:'#2168ad',accent:'#7ce4e2',ink:'#fff',muted:'#d1e6f8'}
+ },p=themes[m.theme]||themes.noir,scale=W/1080;
+ const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,p.a);bg.addColorStop(1,p.b);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+ ctx.save();ctx.globalAlpha=.14;ctx.strokeStyle=p.accent;ctx.lineWidth=2*scale;
+ for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(W*.9,H*.12,90*scale+i*45*scale,0,Math.PI*2);ctx.stroke();}ctx.restore();
+ ctx.textAlign='center';ctx.fillStyle=p.accent;ctx.font='800 '+Math.round(22*scale)+'px Arial';ctx.fillText('BOOK RELEASE  ·  NEW TITLE',W/2,H*.075);
+ const title=$('title').value.trim()||'Untitled book';ctx.fillStyle=p.ink;ctx.font='700 '+Math.round((title.length>30?58:70)*scale)+'px Georgia,serif';
+ const titleBottom=wrapCanvasText(ctx,title,W/2,H*.17,W*.84,Math.round(76*scale),2);
+ ctx.fillStyle=p.muted;ctx.font='italic '+Math.round(25*scale)+'px Georgia,serif';ctx.fillText($('author').value.trim()?('A book by '+$('author').value.trim()):'A new book to discover',W/2,titleBottom+20*scale);
+ const page=getPageDimensions(readSettings()),coverH=Math.min(H*.39,Math.max(360*scale,H*.39)),coverW=coverH*page.width/page.height,x=(W-coverW)/2,y=H*.34;
+ ctx.save();ctx.shadowColor='#0009';ctx.shadowBlur=35*scale;ctx.shadowOffsetY=22*scale;ctx.fillStyle='#fff';ctx.fillRect(x,y,coverW,coverH);ctx.restore();
+ const cover=readCoverSettings(),template=cover.template,coverColors={classic:['#22223b','#58415c'],noir:['#111820','#273747'],modern:['#1456a0','#152547'],editorial:['#e9e1cf','#f7f1e7'],botanical:['#17382e','#4b7555'],minimal:['#f1eee6','#f1eee6']}[template]||['#22223b','#58415c'];
+ const cg=ctx.createLinearGradient(x,y,x+coverW,y+coverH);cg.addColorStop(0,coverColors[0]);cg.addColorStop(1,coverColors[1]);ctx.fillStyle=cg;ctx.fillRect(x,y,coverW,coverH);
+ let image=null;if(cover.artwork){image=await new Promise(resolve=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>resolve(null);im.src=cover.artwork;});}
+ if(image){ctx.save();ctx.globalAlpha=.9;const ir=image.width/image.height,cr=coverW/coverH;let sx=0,sy=0,sw=image.width,sh=image.height;if(ir>cr){sw=image.height*cr;sx=(image.width-sw)/2;}else{sh=image.width/cr;sy=(image.height-sh)/2;}ctx.drawImage(image,sx,sy,sw,sh,x,y,coverW,coverH);ctx.restore();ctx.fillStyle='#11182755';ctx.fillRect(x,y,coverW,coverH);}
+ const inset=coverW*.07;ctx.strokeStyle=cover.accent||p.accent;ctx.lineWidth=2*scale;ctx.strokeRect(x+inset,y+inset,coverW-2*inset,coverH-2*inset);
+ ctx.fillStyle=cover.accent||p.accent;ctx.font='800 '+Math.round(14*scale)+'px Arial';ctx.textAlign='center';ctx.fillText(cover.kicker||'A NOVEL',W/2,y+coverH*.27);
+ ctx.fillStyle='#fffaf0';ctx.font='700 '+Math.round(Math.min(coverW*.105,36*scale))+'px Georgia,serif';wrapCanvasText(ctx,title,W/2,y+coverH*.48,coverW*.78,Math.round(40*scale),3);
+ ctx.fillStyle='#fff7e2';ctx.font='italic '+Math.round(15*scale)+'px Georgia,serif';wrapCanvasText(ctx,cover.subtitle,W/2,y+coverH*.72,coverW*.76,Math.round(20*scale),2);
+ ctx.fillStyle=cover.accent||p.accent;ctx.font='700 '+Math.round(12*scale)+'px Arial';ctx.fillText(($('author').value.trim()||'BOOKFLOW EDITION').toUpperCase(),W/2,y+coverH*.9);
+ const taglineY=Math.min(H*.81,y+coverH+70*scale);ctx.fillStyle=p.accent;ctx.font='700 '+Math.round(28*scale)+'px Georgia,serif';wrapCanvasText(ctx,m.tagline,W/2,taglineY,W*.84,Math.round(34*scale),2);
+ ctx.fillStyle=p.muted;ctx.font=Math.round(16*scale)+'px Arial';const blurb=m.blurb||cover.backText||'Open the book and discover the story.';wrapCanvasText(ctx,blurb,W/2,Math.min(H*.89,taglineY+72*scale),W*.8,Math.round(23*scale),3);
+ const ctaY=H-70*scale;ctx.fillStyle=p.accent;ctx.font='800 '+Math.round(20*scale)+'px Arial';ctx.fillText((m.cta||'Discover the story').toUpperCase(),W/2,ctaY);
+ if(m.url){ctx.fillStyle=p.muted;ctx.font=Math.round(13*scale)+'px Arial';ctx.fillText(m.url.replace(/^https?:\/\//,''),W/2,ctaY+28*scale);}
+ $('marketingPreviewInfo').textContent=format==='square'?'Square · 1080 × 1080':format==='story'?'Story · 1080 × 1920':'Portrait · 1080 × 1350';
+ $('marketingOutputNote').textContent='Campaign artwork uses your title, author, cover and editable copy. PNG export is ready to upload.';
+ return canvas;
+}
+async function copyMarketingCaption(){
+ const value=marketingCaptionText();
+ try{await navigator.clipboard.writeText(value);status('Launch caption copied. Paste it into your social post.','good');}
+ catch{const box=document.createElement('textarea');box.value=value;document.body.append(box);box.select();const ok=document.execCommand('copy');box.remove();status(ok?'Launch caption copied.':'Clipboard permission was blocked; copy the caption manually.',ok?'good':'warn');}
+}
+async function exportMarketingPNG(){
+ try{await drawMarketingPoster();const canvas=$('marketingCanvas');canvas.toBlob(blob=>{if(!blob){status('Could not encode the poster PNG.','warn');return;}download(blob,filename('social-promo','png'),'image/png');status('Social promo poster exported as PNG.','good');},'image/png');}
+ catch(e){status('Poster export failed: '+e.message,'warn');alert(e.message);}
+}
+function buildReaderPayload(){
+ const renderWidth=340,d=getPageDimensions(readSettings()),pages=layouts.map((_,i)=>{const host=document.createElement('div');renderBookPage(host,i,renderWidth);return host.innerHTML;});
+ return {title:$('title').value.trim()||'Untitled book',author:$('author').value.trim(),cover:readCoverSettings(),pageWidth:renderWidth,pageHeight:d.height*renderWidth/d.width,pages};
+}
+async function exportMarketingLanding(){
+ try{
+  await drawMarketingPoster();const m=readMarketingSettings(),poster=$('marketingCanvas').toDataURL('image/png'),readerHTML=buildShareableReaderHTML(buildReaderPayload());
+  const safeReader=JSON.stringify(readerHTML).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
+  const safeTitle=xmlEscape($('title').value.trim()||'Untitled book'),safeAuthor=xmlEscape($('author').value.trim()),safeBlurb=xmlEscape(m.blurb||readCoverSettings().backText);
+  let target='';try{const u=new URL(m.url);if(['http:','https:'].includes(u.protocol))target=u.href;}catch{}
+  const cta=target?'<a class="cta" href="'+xmlEscape(target)+'" target="_blank" rel="noopener">'+xmlEscape(m.cta)+'</a>':'<button class="cta" id="downloadReader">Download interactive reader</button>';
+  const page='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="'+safeBlurb.slice(0,300)+'"><title>'+safeTitle+' · Book</title><style>*{box-sizing:border-box}body{margin:0;background:#101827;color:#f4f0e8;font:16px/1.6 system-ui,Arial,sans-serif}.wrap{max-width:920px;margin:0 auto;padding:30px 16px 70px;text-align:center}.poster{display:block;width:min(100%,580px);height:auto;margin:0 auto 28px;border-radius:10px;box-shadow:0 18px 45px #0008}.title{font:700 clamp(30px,7vw,54px)/1.08 Georgia,serif;margin:10px 0}.author{color:#d8bd79}.blurb{max-width:620px;margin:22px auto;color:#d7deea;white-space:pre-wrap}.cta{display:inline-block;padding:14px 22px;border-radius:999px;background:#d8bd79;color:#182134;font-weight:800;text-decoration:none;border:0;cursor:pointer;font-size:15px}.foot{margin-top:35px;color:#9aa8bd;font-size:12px}</style></head><body><main class="wrap"><img class="poster" src="'+poster+'" alt="Book campaign poster"><h1 class="title">'+safeTitle+'</h1><div class="author">'+safeAuthor+'</div><p class="blurb">'+safeBlurb+'</p>'+cta+'<div class="foot">Book preview prepared with BookFlow Studio</div></main><script>const readerHTML='+safeReader+';document.getElementById("downloadReader")?.addEventListener("click",()=>{const url=URL.createObjectURL(new Blob([readerHTML],{type:"text/html;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="book-reader.html";a.click();setTimeout(()=>URL.revokeObjectURL(url),4000)});</script></body></html>';
+  download(page,filename('book-landing-page','html'),'text/html;charset=utf-8');status('Standalone book landing page exported. Add it to your website or send the file; it includes a reader download when no store link is supplied.','good');
+ }catch(e){status('Landing page export failed: '+e.message,'warn');alert(e.message);}
+}
 function imposition(){return createImposition(layouts.length,+$('signature').value);}
 function renderSheetPreview(r=imposition()){
  const host=$('sheetPhysical'),dims=getSheetDimensions(readSettings()),geo=calculateImpositionGeometry(readSettings()),sheet=r.spreads[selectedSheetIndex];if(!host||!sheet)return;
@@ -420,14 +492,23 @@ $('prev').onclick=()=>{pageIndex=Math.max(0,pageIndex-1);refresh();};$('next').o
 document.querySelectorAll('[data-book-presentation]').forEach(b=>b.addEventListener('click',()=>{bookPresentation=b.dataset.bookPresentation;renderBookPreview();}));
 document.querySelectorAll('[data-book-style]').forEach(b=>b.addEventListener('click',()=>{bookVisualMode=b.dataset.bookStyle;renderBookPreview();}));
 $('exportShareableReader').onclick=()=>{try{exportShareableReader();}catch(e){status(e.message,'warn');alert(e.message);}};
-['coverTemplate','coverKicker','coverSubtitle','coverBackText','coverAccent'].forEach(id=>$(id).addEventListener('input',()=>{sync();store();if(activePreviewView==='book')renderClosedCover();}));
+['coverTemplate','coverKicker','coverSubtitle','coverBackText','coverAccent','coverBinding','coverCaliper','coverBleed','coverSafe'].forEach(id=>$(id).addEventListener('input',()=>{sync();store();if(activePreviewView==='book'){renderClosedCover();renderCoverSpread();}void drawMarketingPoster();}));
 $('coverImageFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const cover=await normaliseBookImage(await readFileDataURL(file),file.name);coverArtworkData=cover.data;sync();store();$('coverImageStatus').textContent='Cover artwork loaded · '+file.name;if(activePreviewView==='book')renderClosedCover();}catch(err){alert('Cover image failed: '+err.message);}finally{e.target.value='';}});
 $('removeCoverImage').onclick=()=>{coverArtworkData='';sync();store();$('coverImageStatus').textContent='No cover artwork selected.';if(activePreviewView==='book')renderClosedCover();};
+$('exportCoverSVG').onclick=exportCoverSpreadSVG;$('exportCoverSVG2').onclick=exportCoverSpreadSVG;
+document.querySelectorAll('[data-book-angle]').forEach(b=>b.addEventListener('click',()=>{bookAngle=b.dataset.bookAngle;renderBookPreview();}));
+$('sheetPreviewIndex').addEventListener('change',()=>{selectedSheetIndex=Number($('sheetPreviewIndex').value)||0;renderSheets();});
+document.querySelectorAll('[data-sheet-side]').forEach(b=>b.addEventListener('click',()=>{selectedSheetSide=b.dataset.sheetSide;renderSheetPreview();}));
+$('sheetPrev').onclick=()=>{selectedSheetIndex=Math.max(0,selectedSheetIndex-1);renderSheets();};
+$('sheetNext').onclick=()=>{selectedSheetIndex=Math.min(imposition().spreads.length-1,selectedSheetIndex+1);renderSheets();};
+['marketingTagline','marketingBlurb','marketingCTA','marketingURL','marketingTheme','marketingFormat','marketingHashtags'].forEach(id=>$(id).addEventListener('input',()=>{sync();store();void drawMarketingPoster();}));
+$('marketingExportPNG').onclick=exportMarketingPNG;$('marketingCopyCaption').onclick=copyMarketingCaption;$('marketingExportLanding').onclick=exportMarketingLanding;
 
-document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{activePreviewView=b.dataset.view;document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x===b));$('readerView').classList.toggle('hidden',activePreviewView!=='reader');$('bookView').classList.toggle('hidden',activePreviewView!=='book');$('sheetsView').classList.toggle('hidden',activePreviewView!=='sheets');$('checksView').classList.toggle('hidden',activePreviewView!=='checks');if(activePreviewView==='book'){bookSpreadIndex=bookSpreadForPage(pageIndex);renderBookPreview();}});
+
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{activePreviewView=b.dataset.view;document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x===b));$('readerView').classList.toggle('hidden',activePreviewView!=='reader');$('bookView').classList.toggle('hidden',activePreviewView!=='book');$('sheetsView').classList.toggle('hidden',activePreviewView!=='sheets');$('checksView').classList.toggle('hidden',activePreviewView!=='checks');if(activePreviewView==='book'){bookSpreadIndex=bookSpreadForPage(pageIndex);renderBookPreview();}if(activePreviewView==='sheets')requestAnimationFrame(()=>renderSheetPreview());});
 const ids=['title','author','wordHeader','wordFooter','wordHeaderAlign','wordFooterAlign','wordToc','pagePreset','pageW','pageH','orientation','fontSize','columns','lineSpacing','align','topMargin','bottomMargin','innerMargin','outerMargin','gutter','pageNumbers','chapterStart','sheetPreset','sheetW','sheetH' ,'sheetOrientation','printer','hpModel','mode','signature','fit','customScale','flip','backOrder','marks'];
 for(const id of ids)$(id).addEventListener('change',()=>{if(id==='pagePreset'&&PAPER_MM[$('pagePreset').value]){let [w,h]=PAPER_MM[$('pagePreset').value];$('pageW').value=w;$('pageH').value=h;}if(id==='sheetPreset'&&PAPER_MM[$('sheetPreset').value]){let [w,h]=PAPER_MM[$('sheetPreset').value];if($('sheetOrientation').value==='landscape'){$('sheetW').value=Math.max(w,h);$('sheetH').value=Math.min(w,h);}else{$('sheetW').value=Math.min(w,h);$('sheetH').value=Math.max(w,h);}}if(id==='printer'){if($('printer').value==='l8050')$('mode').value='manual';if($('printer').value==='hp400'||$('printer').value==='other')$('mode').value='manual';if($('printer').value==='et4850')$('mode').value='auto';if($('printer').value==='hp400'&&$('hpModel').value!=='m401dn'&&$('hpModel').value!=='m401dw')$('mode').value='manual';}if(id==='hpModel')$('mode').value=['m401dn','m401dw'].includes($('hpModel').value)?'auto':'manual';pageIndex=0;refresh();});
-window.addEventListener('resize',()=>{renderReader();renderBookPreview();});window.addEventListener('beforeunload',()=>{sync();store(true);});
+window.addEventListener('resize',()=>{renderReader();renderBookPreview();if(activePreviewView==='sheets')renderSheetPreview();});window.addEventListener('beforeunload',()=>{sync();store(true);});
 window.addEventListener('pagehide',()=>{sync();store(true);});
 async function boot(){
  const saved=await loadStoredProjects();projects=Array.isArray(saved.projects)?saved.projects:[];activeId=saved.activeId||'';fullSaveNeeded=!saved.fromDB;

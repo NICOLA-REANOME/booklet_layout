@@ -62,11 +62,28 @@ test('AI assistant presents verified before/after edits for explicit user applic
 test('cover editor, open/closed book studio, flat/3D modes and share export are wired',()=>{
  for(const id of ['coverTemplate','coverKicker','coverSubtitle','coverAccent','coverBackText','coverImageFile','removeCoverImage','exportShareableReader','closedBook','closedCoverTitle'])assert.ok(ids.has(id),'missing '+id);
  assert.match(app,/function renderClosedCover/);assert.match(app,/function exportShareableReader/);assert.match(app,/buildShareableReaderHTML/);
- assert.match(html,/data-book-presentation="closed"/);assert.match(html,/data-book-style="2d"/);
+ assert.match(html,/data-book-presentation="cover"/);assert.match(html,/data-book-style="2d"/);
 });
 test('shareable reader is self-contained, embeds images and escapes script-closing title text',()=>{
  const output=buildShareableReaderHTML({title:'Test </script>',author:'A',cover:{template:'classic',artwork:'data:image/png;base64,AA=='},pageWidth:340,pageHeight:480,pages:['<div class="book-page">Page 1</div>']});
  assert.match(output,/<!doctype html>/i);assert.match(output,/data:image\/png;base64,AA==/);assert.match(output,/class='turn'/);assert.match(output,/Page 1/);const start=output.indexOf('<script>')+8,end=output.indexOf('</script>',start);assert.ok(start>=8&&end>start,'inline reader controller is present');assert.doesNotThrow(()=>new Function(output.slice(start,end)));
  assert.doesNotMatch(output,/<script>.*Test <\/script>/s);
  assert.doesNotMatch(output,/src=['"]https?:\/\//);
+});
+
+test('booklet sheets show imposed pages on a physical sheet with front/back controls',()=>{
+ for(const id of ['sheetPhysical','sheetPreviewLeft','sheetPreviewRight','sheetPreviewIndex','sheetPrev','sheetNext'])assert.ok(ids.has(id),'missing '+id);
+ assert.match(app,/function renderSheetPreview/);assert.match(app,/calculateImpositionGeometry\(readSettings\(\)\)/);
+ assert.match(app,/renderBookPage\(slot,number===null\?-1:number-1,pageW\)/);
+ assert.match(html,/data-sheet-side="front"/);assert.match(html,/data-sheet-side="back"/);
+});
+test('full cover wrap includes back, spine, front, bleed, safe guides and SVG export',()=>{
+ for(const id of ['coverBinding','coverCaliper','coverBleed','coverSafe','bookCoverView','coverSpreadBackText','coverSpreadSpineTitle','coverSpreadFrontTitle','exportCoverSVG'])assert.ok(ids.has(id),'missing '+id);
+ assert.match(app,/function getCoverMetrics/);assert.match(app,/function renderCoverSpread/);assert.match(app,/function exportCoverSpreadSVG/);
+ assert.match(html,/Full cover wrap/);assert.match(html,/CorelDRAW/);
+});
+test('marketing studio exports campaign PNG and landing page without requiring AI',()=>{
+ for(const id of ['marketingStudio','marketingTagline','marketingBlurb','marketingCTA','marketingURL','marketingTheme','marketingFormat','marketingHashtags','marketingCanvas','marketingExportPNG','marketingCopyCaption','marketingExportLanding'])assert.ok(ids.has(id),'missing '+id);
+ assert.match(app,/function drawMarketingPoster/);assert.match(app,/function marketingCaptionText/);assert.match(app,/function exportMarketingLanding/);assert.match(app,/function exportMarketingPNG/);
+ assert.match(html,/No AI key required/);assert.match(html,/1080 × 1350/);
 });

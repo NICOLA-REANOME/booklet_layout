@@ -7,6 +7,10 @@ A local-first book layout and prepress workspace with reusable layout profiles, 
 - Multiple book projects saved in browser IndexedDB (legacy localStorage projects are migrated on first run); project search, duplicate, delete, and JSON backup/restore. Books remain on this device and do not sync across devices.
 - TXT, Markdown, DOCX and text-based PDF import; manuscript editing, basic heading detection, page-break markers, undo/redo. Scanned image-only PDFs still need OCR outside this version.
 - Book page sizes, orientation, margins, gutter, columns, line spacing, visible page numbers and approximate pagination.
+- Visual booklet press-sheet preview: front/reverse sides, imposed page artwork, physical sheet dimensions, fit scale and clickable sheet selection.
+- Full cover-wrap designer with back panel, estimated spine, front panel, bleed/safe guides and vector SVG export for CorelDRAW.
+- Book presentation studio with reader spreads, closed-book camera angles and standalone offline HTML reader export.
+- Local Marketing Studio: editable launch copy, campaign poster PNG in portrait/square/story formats, social caption copy and standalone book landing page.
 - Reusable named presets:
   - A5 Paperback
   - A6 Pocket Book
