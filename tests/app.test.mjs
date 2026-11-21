@@ -91,7 +91,7 @@ test('marketing studio exports campaign PNG and landing page without requiring A
 test('marketing poster refreshes when the active book, cover artwork or book identity changes',()=>{
  assert.match(app,/renderProjects\(\);refresh\(\);void drawMarketingPoster\(\)/);
  assert.match(app,/\['title','author'\]\.forEach/);
- assert.match(app,/void drawMarketingPoster\(\);catch/);
+ assert.match(app,/void drawMarketingPoster\(\);\}catch/);
 });
 test('cover artwork and removal refresh both open production wrap and marketing artwork',()=>{
  assert.match(app,/renderCoverSpread\(\);\}void drawMarketingPoster\(\)/);
