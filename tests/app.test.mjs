@@ -128,3 +128,14 @@ test('Lateef Urdu fonts are proxied through a same-origin endpoint with an OFL l
  assert.ok(existsSync(new URL('../assets/fonts/OFL-Lateef.txt',import.meta.url)));
  assert.match(html,/\/api\/font\?weight=700/);
 });
+
+
+test('3D book cover supports drag rotation, wheel zoom, and named camera presets',()=>{
+ assert.match(app,/pointerdown/);assert.match(app,/pointermove/);assert.match(app,/addEventListener\('wheel'/);
+ assert.match(app,/bookZoom/);assert.match(app,/angleDefaults/);
+ assert.match(html,/Drag the book to rotate it and use the mouse wheel to zoom/);
+});
+test('image drag and drop does not bubble to duplicate drop targets',()=>{
+ assert.match(app,/e\.stopPropagation\(\);insertDroppedImages/);
+ assert.match(app,/addImageDropTarget/);
+});
