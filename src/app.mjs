@@ -98,7 +98,7 @@ function containsUrduScript(text){return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08
 const layoutMeasureCanvas=document.createElement('canvas'),layoutMeasureContext=layoutMeasureCanvas.getContext('2d');
 function browserMeasure(text,kind='body'){
  const fs=(Number($('fontSize')?.value)||11)*(kind==='heading'?1.28:1),dir=textDirection(text),px=fs*96/72;
- layoutMeasureContext.font=px+'px '+(dir==='rtl'?'"Lateef","Times New Roman",serif:'"Times New Roman",Georgia,serif');
+ layoutMeasureContext.font=px+'px '+(dir==='rtl'?'"Lateef", "Times New Roman", serif':'"Times New Roman", Georgia, serif');
  layoutMeasureContext.direction=dir;
  return layoutMeasureContext.measureText(String(text??'')).width*.75;
 }
