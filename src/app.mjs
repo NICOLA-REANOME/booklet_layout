@@ -503,7 +503,7 @@ async function readerPDFRasterized(){
    const dir=l.direction||textDirection(l.text),level=l.headingLevel||1,fs=s.fontSize*(l.kind==='heading'?[1,1.55,1.32,1.16][level]:1);
    const x=colX+(Number(l.textOffsetXPt)||0),width=Number(l.textWidthPt)>0?Number(l.textWidthPt):cw;
    ctx.save();ctx.fillStyle='#111';ctx.textBaseline='alphabetic';ctx.direction=dir;
-   ctx.font=(l.kind==='heading'?'bold ':'')+(fs*rasterScale)+'px '+(dir==='rtl'?'"Lateef", "Times New Roman", serif:'"Times New Roman", Georgia, serif');
+   ctx.font=(l.kind==='heading'?'bold ':'')+(fs*rasterScale)+'px '+(dir==='rtl'?'"Lateef", "Times New Roman", serif':'"Times New Roman", Georgia, serif');
    ctx.textAlign=dir==='rtl'?'right':(s.textAlign==='center'?'center':'left');
    const anchor=dir==='rtl'?(x+width):(s.textAlign==='center'?x+width/2:x),baseline=(top+l.yTopPt+fs*1.16)*rasterScale;
    ctx.fillText(l.text,anchor*rasterScale,baseline);ctx.restore();
