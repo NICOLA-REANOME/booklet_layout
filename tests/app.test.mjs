@@ -147,3 +147,11 @@ test('2D cover wrap is a sibling of the hidden closed 3D cover view',()=>{
  const between=html.slice(closed,flat);
  assert.match(between,/cover-caption[\s\S]*<\/div><\/div><\/div>\s*$/);
 });
+
+
+test('DOCX export uses floating Word image anchors when text wrapping is selected',()=>{
+ assert.match(app,/wp:anchor/);
+ assert.match(app,/wp:wrapSquare wrapText=/);
+ assert.match(app,/flow==='wrap-left'/);
+ assert.match(app,/flow==='wrap-right'/);
+});
