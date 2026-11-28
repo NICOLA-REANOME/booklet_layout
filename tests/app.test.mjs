@@ -139,3 +139,11 @@ test('image drag and drop does not bubble to duplicate drop targets',()=>{
  assert.match(app,/e\.stopPropagation\(\);insertDroppedImages/);
  assert.match(app,/addImageDropTarget/);
 });
+
+
+test('2D cover wrap is a sibling of the hidden closed 3D cover view',()=>{
+ const closed=html.indexOf('<div id="bookClosedView"'),flat=html.indexOf('<div id="bookCoverView"');
+ assert.ok(closed>=0&&flat>closed);
+ const between=html.slice(closed,flat);
+ assert.match(between,/cover-caption[\s\S]*<\/div><\/div><\/div>\s*$/);
+});
