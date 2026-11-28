@@ -1,7 +1,7 @@
 import {PAPER_MM,getPageDimensions,getSheetDimensions,calculateImpositionGeometry,createImposition,paginateManuscript,getBookSpread,getBookSpreadForPage} from './engine.mjs';
 import {buildShareableReaderHTML} from './share-reader.mjs';
 const $=id=>document.getElementById(id),KEY='bookflow-projects-v2',MM=72/25.4;
-let projects=[],activeId='',layouts=[],pageIndex=0,undo=[],redo=[],previousText='',imageAssets=[],activePreviewView='reader',bookSpreadIndex=0,bookFlipBusy=false,bookFlipToken=0,bookPresentation='open',bookVisualMode='3d',bookAngle='hero',coverArtworkData='',selectedSheetIndex=0,selectedSheetSide='front';
+let projects=[],activeId='',layouts=[],pageIndex=0,undo=[],redo=[],previousText='',imageAssets=[],activePreviewView='reader',bookSpreadIndex=0,bookFlipBusy=false,bookFlipToken=0,bookPresentation='open',bookVisualMode='3d',bookAngle='hero',bookRotation=null,bookZoom=1,bookDrag=null,coverArtworkData='',selectedSheetIndex=0,selectedSheetSide='front';
 const DEFAULT_COVER={template:'classic',kicker:'A NOVEL',subtitle:'',backText:'',accent:'#d7b66e',artwork:'',binding:'perfect',caliper:0.10,bleed:3,safe:5};
 const DEFAULT_MARKETING={tagline:'A story worth turning the page for',blurb:'',cta:'Discover the story',url:'',theme:'noir',format:'portrait',hashtags:'#BookLaunch #NewRelease #Readers'};
 const def=()=>({id:'book-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),title:'Untitled book',author:'',text:'',images:[],cover:{...DEFAULT_COVER},marketing:{...DEFAULT_MARKETING},settings:{wordHeaderText:'',wordFooterText:'',wordHeaderAlign:'center',wordFooterAlign:'center',wordToc:true,pagePreset:'A5',pageW:148,pageH:210,orientation:'portrait',fontSize:11,columns:1,lineSpacing:1.4,align:'left',topMargin:18,bottomMargin:18,innerMargin:18,outerMargin:14,gutter:5,pageNumbers:true,chapterStart:true,sheetPreset:'A4',sheetW:297,sheetH:210,sheetOrientation:'landscape',printer:'et4850',hpModel:'unknown',mode:'auto',signature:32,fit:'fit',safeMargin:5,customScale:100,flip:'long',backOrder:'same',marks:false,imageMode:'color'},updated:Date.now()});
@@ -658,7 +658,36 @@ $('coverImageFile').addEventListener('change',async e=>{const file=e.target.file
 ['title','author'].forEach(id=>$(id).addEventListener('input',()=>{if(activePreviewView==='book')renderBookPreview();void drawMarketingPoster();}));
 $('removeCoverImage').onclick=()=>{coverArtworkData='';sync();store();$('coverImageStatus').textContent='No cover artwork selected.';if(activePreviewView==='book'){renderClosedCover();renderCoverSpread();}void drawMarketingPoster();};
 $('exportCoverSVG').onclick=exportCoverSpreadSVG;$('exportCoverSVG2').onclick=exportCoverSpreadSVG;
-document.querySelectorAll('[data-book-angle]').forEach(b=>b.addEventListener('click',()=>{bookAngle=b.dataset.bookAngle;renderBookPreview();}));
+document.querySelectorAll('[data-book-angle]').forEach(b=>b.addEventListener('click',()=>{
+ bookAngle=b.dataset.bookAngle;bookRotation=null;bookZoom=1;
+ $('closedBook').style.transform='';renderBookPreview();
+}));
+const closedStage=$('closedBookStage'),closedModel=$('closedBook');
+const angleDefaults={hero:{x:5,y:-28},front:{x:0,y:0},spine:{x:2,y:-62},back:{x:1,y:180},flatlay:{x:52,y:-10}};
+function paintClosedModel(){
+ if(!bookRotation)return;
+ closedModel.style.transform='rotateX('+bookRotation.x+'deg) rotateY('+bookRotation.y+'deg) scale('+bookZoom+')';
+}
+closedStage.addEventListener('pointerdown',e=>{
+ if(bookPresentation!=='cover'||bookVisualMode!=='3d')return;
+ const start=angleDefaults[bookAngle]||angleDefaults.hero;
+ bookRotation=bookRotation||{...start};bookDrag={x:e.clientX,y:e.clientY,rotation:{...bookRotation}};
+ closedStage.classList.add('dragging');closedStage.setPointerCapture?.(e.pointerId);e.preventDefault();
+});
+closedStage.addEventListener('pointermove',e=>{
+ if(!bookDrag)return;
+ const dx=e.clientX-bookDrag.x,dy=e.clientY-bookDrag.y;
+ bookRotation={x:Math.max(-65,Math.min(70,bookDrag.rotation.x-dy*.42)),y:Math.max(-180,Math.min(180,bookDrag.rotation.y+dx*.62))};
+ bookAngle='custom';paintClosedModel();
+});
+const finishClosedDrag=()=>{bookDrag=null;closedStage.classList.remove('dragging');};
+closedStage.addEventListener('pointerup',finishClosedDrag);closedStage.addEventListener('pointercancel',finishClosedDrag);closedStage.addEventListener('lostpointercapture',finishClosedDrag);
+closedStage.addEventListener('wheel',e=>{
+ if(bookPresentation!=='cover'||bookVisualMode!=='3d')return;
+ e.preventDefault();bookZoom=Math.max(.62,Math.min(1.55,bookZoom+(e.deltaY<0?.06:-.06)));
+ if(!bookRotation)bookRotation={...(angleDefaults[bookAngle]||angleDefaults.hero)};
+ bookAngle='custom';paintClosedModel();
+},{passive:false});
 $('sheetPreviewIndex').addEventListener('change',()=>{selectedSheetIndex=Number($('sheetPreviewIndex').value)||0;renderSheets();});
 document.querySelectorAll('[data-sheet-side]').forEach(b=>b.addEventListener('click',()=>{selectedSheetSide=b.dataset.sheetSide;renderSheetPreview();}));
 $('sheetPrev').onclick=()=>{selectedSheetIndex=Math.max(0,selectedSheetIndex-1);renderSheets();};
