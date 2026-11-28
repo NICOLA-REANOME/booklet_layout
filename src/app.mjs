@@ -592,7 +592,7 @@ async function exportDocx(){
   }
   const index=Number(rel.replace('rIdImage','')),available=pt(d.width-s.innerMargin-s.gutter-s.outerMargin),
     floating=['wrap-left','wrap-right'].includes(im.flow),
-    maxWidth=available*(floating?.62:1),
+    maxWidth=available*(floating ? 0.62 : 1),
     width=Math.min(maxWidth,Number(im.widthMm)>0?pt(im.widthMm):available*(Math.max(20,Math.min(100,Number(im.widthPercent)||80))/100)),
     aspect=(Number(im.width)||4)/(Number(im.height)||3),
     height=Number(im.heightMm)>0?pt(im.heightMm):width/aspect,
