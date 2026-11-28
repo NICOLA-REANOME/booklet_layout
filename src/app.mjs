@@ -580,7 +580,36 @@ async function exportDocx(){
  if(!window.JSZip)throw Error('Word export library did not load. Refresh the page and try again.');sync();const zip=new window.JSZip(),s=readSettings(),d=getPageDimensions(s),title=$('title').value||'Book',author=$('author').value||'',content=String($('manuscript').value||'').replace(/\r\n?/g,'\n').split('\n'),footnoteDefinitions=new Map();
  for(const line of content){const m=line.match(/^\s*\[\^([a-zA-Z0-9_-]{1,48})\]:\s*(.*)$/);if(m)footnoteDefinitions.set(m[1],m[2]);}
  const footnoteIds=new Map();for(const line of content)for(const m of line.matchAll(/\[\^([a-zA-Z0-9_-]{1,48})\]/g))if(footnoteDefinitions.has(m[1])&&!footnoteIds.has(m[1]))footnoteIds.set(m[1],footnoteIds.size+1);
- const wordRuns=value=>{const input=String(value??''),parts=[],re=/\[\^([a-zA-Z0-9_-]{1,48})\]/g,rtl=containsUrduScript(input),rpr=rtl?'<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Lateef"/><w:rtl/></w:rPr>':'';let last=0,m;while((m=re.exec(input))){if(m.index>last)parts.push('<w:r>'+rpr+'<w:t xml:space="preserve">'+xmlEscape(input.slice(last,m.index))+'</w:t></w:r>');const id=footnoteIds.get(m[1]);if(id)parts.push('<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="'+id+'"/></w:r>');else parts.push('<w:r>'+rpr+'<w:t>'+xmlEscape(m[0])+'</w:t></w:r>');last=re.lastIndex;}if(last<input.length||!parts.length)parts.push('<w:r>'+rpr+'<w:t xml:space="preserve">'+xmlEscape(input.slice(last))+'</w:t></w:r>');return parts.join('');};
+ const wordRuns=value=>{
+  const input=String(value??''),parts=[],re=/\[\^([a-zA-Z0-9_-]{1,48})\]/g;
+  const pushText=segment=>{
+   if(!segment)return;
+   let direction=textDirection(segment),buffer='';
+   const flush=()=>{
+    if(!buffer)return;
+    const rpr=direction==='rtl'
+      ?'<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Lateef"/><w:rtl/></w:rPr>'
+      :'<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/></w:rPr>';
+    parts.push('<w:r>'+rpr+'<w:t xml:space="preserve">'+xmlEscape(buffer)+'</w:t></w:r>');buffer='';
+   };
+   for(const ch of segment){
+    const next=/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(ch)?'rtl':/[A-Za-z0-9]/.test(ch)?'ltr':direction;
+    if(buffer&&next!==direction)flush();
+    direction=next;buffer+=ch;
+   }
+   flush();
+  };
+  let last=0,m;
+  while((m=re.exec(input))){
+   if(m.index>last)pushText(input.slice(last,m.index));
+   const id=footnoteIds.get(m[1]);
+   if(id)parts.push('<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="'+id+'"/></w:r>');
+   else pushText(m[0]);
+   last=re.lastIndex;
+  }
+  if(last<input.length||!parts.length)pushText(input.slice(last));
+  return parts.join('');
+ };
  const imageById=new Map(imageAssets.map(im=>[im.id,im])),imageRelMap=new Map(),imageRelations=[],mediaFolder=zip.folder('word').folder('media');
  function drawingFor(im){
   let rel=imageRelMap.get(im.id);
