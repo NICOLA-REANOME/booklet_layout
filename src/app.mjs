@@ -169,9 +169,9 @@ async function insertDroppedImages(files){
 }
 function addImageDropTarget(target){
  if(!target)return;
- target.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();target.classList.add('drag-image-active');}});
+ target.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();e.stopPropagation();target.classList.add('drag-image-active');}});
  target.addEventListener('dragleave',()=>target.classList.remove('drag-image-active'));
- target.addEventListener('drop',e=>{target.classList.remove('drag-image-active');if(![...e.dataTransfer.types].includes('Files'))return;e.preventDefault();insertDroppedImages(e.dataTransfer.files).catch(err=>{status('Image drop failed: '+err.message,'warn');alert(err.message);});});
+ target.addEventListener('drop',e=>{target.classList.remove('drag-image-active');if(![...e.dataTransfer.types].includes('Files'))return;e.preventDefault();e.stopPropagation();insertDroppedImages(e.dataTransfer.files).catch(err=>{status('Image drop failed: '+err.message,'warn');alert(err.message);});});
 }
 ['manuscript','editorpanel','paper','bookViewport'].forEach(id=>addImageDropTarget($(id)));
 $('insertFootnote')?.addEventListener('click',()=>{const e=$('manuscript'),ids=[...e.value.matchAll(/\[\^note-(\d+)\]/g)].map(m=>Number(m[1])).filter(Number.isFinite),id='note-'+(Math.max(0,...ids)+1),start=e.selectionStart??e.value.length,end=e.selectionEnd??start;undo.push(e.value);if(undo.length>80)undo.shift();redo=[];e.setRangeText('[^'+id+']',start,end,'end');e.value=e.value.replace(/\s*$/,'')+'\n\n[^'+id+']: Write the footnote text here.';previousText=e.value;pageIndex=0;refresh();e.focus();status('Footnote reference added. Replace the placeholder before Word export.','good');});
@@ -193,7 +193,7 @@ function renderReader(){
   el.style.left=(leftMm*scale)+'px';el.style.top=topPx+'px';el.style.width=(widthMm*scale)+'px';
   const level=l.headingLevel||1,fs=s.fontSize*(l.kind==='heading'?[1,1.55,1.32,1.16][level]:1);
   el.style.fontSize=(fs*25.4/72*scale)+'px';el.style.fontFamily=dir==='rtl'?'Lateef, "Times New Roman", serif':'Georgia, "Times New Roman", serif';
-  if(l.kind==='heading')el.style.fontWeight='700';el.style.textAlign=dir==='rtl'?'right':(s.textAlign||'left');host.append(el);
+  if(l.kind==='heading')el.style.fontWeight='700';const justify=s.textAlign==='justify'&&l.paragraphLast!==true;el.style.textAlign=justify?'justify':(dir==='rtl'?'right':(s.textAlign||'left'));el.style.textAlignLast=justify?'justify':'auto';host.append(el);
  }
  $('pagenum').textContent=s.pageNumbers?pageIndex+1:'';$('pagenum').style.display=s.pageNumbers?'block':'none';$('prev').disabled=pageIndex===0;$('next').disabled=pageIndex>=layouts.length-1;
 }
@@ -221,7 +221,7 @@ function renderBookPage(slot,index,pageWidth){
   line.style.left=(left*scale)+'px';line.style.top=top+'px';line.style.width=(width*scale)+'px';
   const level=l.headingLevel||1,fs=s.fontSize*(l.kind==='heading'?[1,1.55,1.32,1.16][level]:1);
   line.style.fontSize=(fs*25.4/72*scale)+'px';line.style.fontFamily=dir==='rtl'?'Lateef, "Times New Roman", serif':'Georgia, "Times New Roman", serif';
-  if(l.kind==='heading')line.style.fontWeight='700';line.style.textAlign=dir==='rtl'?'right':(s.textAlign||'left');content.append(line);
+  if(l.kind==='heading')line.style.fontWeight='700';const justify=s.textAlign==='justify'&&l.paragraphLast!==true;line.style.textAlign=justify?'justify':(dir==='rtl'?'right':(s.textAlign||'left'));line.style.textAlignLast=justify?'justify':'auto';content.append(line);
  }
  if(s.pageNumbers){const number=document.createElement('span');number.className='book-page-number';number.textContent=String(index+1);page.append(number);}
  slot.append(page);
@@ -506,7 +506,11 @@ async function readerPDFRasterized(){
    ctx.font=(l.kind==='heading'?'bold ':'')+(fs*rasterScale)+'px '+(dir==='rtl'?'"Lateef", "Times New Roman", serif':'"Times New Roman", Georgia, serif');
    ctx.textAlign=dir==='rtl'?'right':(s.textAlign==='center'?'center':'left');
    const anchor=dir==='rtl'?(x+width):(s.textAlign==='center'?x+width/2:x),baseline=(top+l.yTopPt+fs*1.16)*rasterScale;
-   ctx.fillText(l.text,anchor*rasterScale,baseline);ctx.restore();
+   if(s.textAlign==='justify'&&l.paragraphLast!==true){
+    const words=l.text.split(/\s+/).filter(Boolean),sum=words.reduce((n,w)=>n+ctx.measureText(w).width,0),space=words.length>1?Math.max(0,(width*rasterScale-sum)/(words.length-1)):0;
+    if(words.length>1){if(dir==='rtl'){let cursor=anchor*rasterScale;for(const word of words){ctx.textAlign='right';ctx.fillText(word,cursor,baseline);cursor-=ctx.measureText(word).width+space;}}else{let cursor=x*rasterScale;ctx.textAlign='left';for(const word of words){ctx.fillText(word,cursor,baseline);cursor+=ctx.measureText(word).width+space;}}}
+    else ctx.fillText(l.text,anchor*rasterScale,baseline);
+   }else ctx.fillText(l.text,anchor*rasterScale,baseline);ctx.restore();
   }
   if(s.pageNumbers){ctx.save();ctx.fillStyle='#444';ctx.font=8*rasterScale+'px "Times New Roman",serif';ctx.textAlign='center';ctx.direction='ltr';ctx.fillText(String(i+1),PW/2*rasterScale,(PH-pt(Math.min(8,s.marginBottom/2)))*rasterScale);ctx.restore();}
   const page=doc.addPage([PW,PH]),png=dataURLBytes(canvas.toDataURL('image/png')),image=await doc.embedPng(png);
@@ -533,7 +537,11 @@ async function readerPDF(){
    if(!l.text)continue;
    const font=l.kind==='heading'?bold:regular,level=l.headingLevel||1,drawSize=fs*(l.kind==='heading'?[1,1.55,1.32,1.16][level]:1),x0=left+c*(cw+gap)+(Number(l.textOffsetXPt)||0),lineWidth=Number(l.textWidthPt)>0?Number(l.textWidthPt):cw;
    let x=x0;if(s.textAlign==='center')x+=Math.max(0,(lineWidth-font.widthOfTextAtSize(l.text,drawSize))/2);
-   page.drawText(l.text,{x,y:PH-top-l.yTopPt-drawSize,size:drawSize,font,maxWidth:lineWidth,color:window.PDFLib.rgb(.07,.08,.1)});
+   if(s.textAlign==='justify'&&l.kind!=='heading'&&l.paragraphLast!==true){
+    const words=l.text.split(/\s+/).filter(Boolean),sum=words.reduce((n,w)=>n+font.widthOfTextAtSize(w,drawSize),0),space=words.length>1?Math.max(0,(lineWidth-sum)/(words.length-1)):0;
+    if(words.length>1){let cursor=x;for(const word of words){page.drawText(word,{x:cursor,y:PH-top-l.yTopPt-drawSize,size:drawSize,font,color:window.PDFLib.rgb(.07,.08,.1)});cursor+=font.widthOfTextAtSize(word,drawSize)+space;}}
+    else page.drawText(l.text,{x,y:PH-top-l.yTopPt-drawSize,size:drawSize,font,color:window.PDFLib.rgb(.07,.08,.1)});
+   }else page.drawText(l.text,{x,y:PH-top-l.yTopPt-drawSize,size:drawSize,font,maxWidth:lineWidth,color:window.PDFLib.rgb(.07,.08,.1)});
   }
   if(s.pageNumbers){const label=String(i+1),size=8;page.drawText(label,{x:(PW-regular.widthOfTextAtSize(label,size))/2,y:pt(Math.min(8,s.marginBottom/2)),size,font:regular,color:window.PDFLib.rgb(.35,.35,.38)});}
  }
@@ -576,7 +584,7 @@ async function exportDocx(){
  const imageById=new Map(imageAssets.map(im=>[im.id,im])),imageRelMap=new Map(),imageRelations=[],mediaFolder=zip.folder('word').folder('media');
  function drawingFor(im){let rel=imageRelMap.get(im.id);if(!rel){const n=imageRelMap.size+1;rel='rIdImage'+n;imageRelMap.set(im.id,rel);const ext=im.mimeType==='image/jpeg'?'jpg':'png',fileName='image'+n+'.'+ext;mediaFolder.file(fileName,dataURLBytes(im.data));imageRelations.push('<Relationship Id="'+rel+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/'+fileName+'"/>');}const index=Number(rel.replace('rIdImage','')),available=pt(d.width)-pt(s.innerMargin+s.gutter+s.outerMargin),width=Math.min(available,Number(im.widthMm)>0?pt(im.widthMm):available*(Math.max(20,Math.min(100,Number(im.widthPercent)||80))/100)),aspect=(Number(im.width)||4)/(Number(im.height)||3),height=Number(im.heightMm)>0?pt(im.heightMm):width/aspect,cx=Math.round(width*12700),cy=Math.round(height*12700),align=['left','right','center'].includes(im.align)?im.align:'center',name=xmlEscape(im.name||'Book image'),xIndent=Math.round((Number(im.offsetXmm)||0)*1440/25.4),ySpacing=Math.max(0,Math.round((Number(im.offsetYmm)||0)*1440/25.4));return '<w:p><w:pPr><w:jc w:val="'+align+'"/><w:ind w:left="'+xIndent+'"/><w:spacing w:before="'+ySpacing+'"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+cx+'" cy="'+cy+'"/><wp:docPr id="'+index+'" name="'+name+'"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="'+index+'" name="'+name+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rel+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>'+(im.caption?'<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:i/><w:sz w:val="16"/></w:rPr><w:t>'+xmlEscape(im.caption)+'</w:t></w:r></w:p>':'');}
  const paragraphs=[];if(s.wordToc){paragraphs.push('<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t>Contents</w:t></w:r></w:p>');const slash=String.fromCharCode(92),instruction=' TOC '+slash+'o "1-3" '+slash+'h '+slash+'z '+slash+'u ';paragraphs.push('<w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve">'+instruction+'</w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Open in Word and update this field to populate the contents page.</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:r><w:br w:type="page"/></w:r></w:p>');}
- for(const line of content){const clean=line.trim();if(/^\[\^[a-zA-Z0-9_-]{1,48}\]:/.test(clean))continue;if(clean==='[PAGE BREAK]'){paragraphs.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');continue;}const imageMatch=clean.match(/^\[\[IMAGE:([a-z0-9_-]+)\]\]$/i);if(imageMatch){const im=imageById.get(imageMatch[1]);paragraphs.push(im?drawingFor(im):'<w:p><w:r><w:t>[Missing manuscript image]</w:t></w:r></w:p>');continue;}const match=clean.match(/^(#{1,3})\s+(.*)$/),text=match?match[2]:clean;if(!text){paragraphs.push('<w:p><w:pPr><w:spacing w:after="80"/></w:pPr></w:p>');continue;}const level=match?Math.min(3,match[1].length):0,style=level?'Heading'+level:'Normal',rtl=containsUrduScript(text),align=rtl?'right':s.textAlign==='center'?'center':s.textAlign==='justify'?'both':'left';paragraphs.push('<w:p><w:pPr><w:pStyle w:val="'+style+'"/>'+(rtl?'<w:bidi/>':'')+'<w:jc w:val="'+align+'"/>'+(level?'<w:keepNext/>':'')+'</w:pPr>'+wordRuns(text)+'</w:p>');}
+ for(const line of content){const clean=line.trim();if(/^\[\^[a-zA-Z0-9_-]{1,48}\]:/.test(clean))continue;if(clean==='[PAGE BREAK]'){paragraphs.push('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');continue;}const imageMatch=clean.match(/^\[\[IMAGE:([a-z0-9_-]+)\]\]$/i);if(imageMatch){const im=imageById.get(imageMatch[1]);paragraphs.push(im?drawingFor(im):'<w:p><w:r><w:t>[Missing manuscript image]</w:t></w:r></w:p>');continue;}const match=clean.match(/^(#{1,3})\s+(.*)$/),text=match?match[2]:clean;if(!text){paragraphs.push('<w:p><w:pPr><w:spacing w:after="80"/></w:pPr></w:p>');continue;}const level=match?Math.min(3,match[1].length):0,style=level?'Heading'+level:'Normal',rtl=containsUrduScript(text),align=rtl?(s.textAlign==='justify'?'both':'right'):s.textAlign==='center'?'center':s.textAlign==='justify'?'both':'left';paragraphs.push('<w:p><w:pPr><w:pStyle w:val="'+style+'"/>'+(rtl?'<w:bidi/>':'')+'<w:jc w:val="'+align+'"/>'+(level?'<w:keepNext/>':'')+'</w:pPr>'+wordRuns(text)+'</w:p>');}
  const twips=n=>Math.round(n*1440/25.4),pgW=twips(d.width),pgH=twips(d.height),headerText=String(s.wordHeaderText||'').replace(/\{title\}/gi,title).replace(/\{author\}/gi,author),footerText=String(s.wordFooterText||'').replace(/\{title\}/gi,title).replace(/\{author\}/gi,author);
  const headerXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="'+s.wordHeaderAlign+'"/></w:pPr><w:r><w:t>'+xmlEscape(headerText)+'</w:t></w:r></w:p></w:hdr>';
  const footerXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="'+s.wordFooterAlign+'"/></w:pPr><w:r><w:t>'+xmlEscape(footerText)+'</w:t></w:r>'+(s.pageNumbers?'<w:r><w:t xml:space="preserve">  ·  </w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple><w:r><w:t xml:space="preserve"> / </w:t></w:r><w:fldSimple w:instr="NUMPAGES"><w:r><w:t>1</w:t></w:r></w:fldSimple>':'')+'</w:p></w:ftr>';
