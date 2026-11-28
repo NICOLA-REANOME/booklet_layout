@@ -133,3 +133,24 @@ test('English book page order places page 1 right and following even/odd pages l
 test('book spread mapping rejects invalid reader pages and spread indexes',()=>{
  assert.throws(()=>getBookSpread(0,0),/at least one/);assert.throws(()=>getBookSpread(5,3),/outside/);assert.throws(()=>getBookSpreadForPage(5,5),/outside/);
 });
+
+
+test('Heading 1, 2 and 3 keep distinct hierarchy metadata and paragraphs keep text direction',()=>{
+ const pages=paginateManuscript('# Chapter One\n## Section Two\n### Detail Three\n\nیہ اردو ہے with English 123',{pageWidthPt:420,pageHeightPt:700,fontSize:11,topMarginPt:30,bottomMarginPt:30,leftMarginPt:30,rightMarginPt:30,measureText:t=>t.length*4});
+ const lines=pages.flatMap(p=>p.columns.flat()).filter(x=>x.text);
+ assert.deepEqual(lines.filter(x=>x.kind==='heading').map(x=>x.headingLevel),[1,2,3]);
+ const rtl=lines.find(x=>x.text.includes('یہ اردو'));
+ assert.equal(rtl.direction,'rtl');
+ assert.equal(rtl.paragraphLast,true);
+});
+test('floating images reserve only their side and let body text use the remaining line width',()=>{
+ const build=flow=>paginateManuscript('[[IMAGE:figure]]\n'+('The story continues around this illustration with useful details. '.repeat(32)),{pageWidthPt:420,pageHeightPt:700,fontSize:10,lineSpacing:1.4,topMarginPt:30,bottomMarginPt:30,leftMarginPt:25,rightMarginPt:25,measureText:t=>t.length*4,getImageInfo:id=>id==='figure'?{aspectRatio:1,widthPt:110,heightPt:100,flow}:null});
+ for(const [flow,offsetExpected] of [['wrap-left',true],['wrap-right',false]]){
+  const lines=build(flow).flatMap(p=>p.columns.flat()),imageIndex=lines.findIndex(x=>x.kind==='image'),image=lines[imageIndex];
+  const first=lines.slice(imageIndex+1).find(x=>x.kind==='body');
+  assert.ok(image);assert.ok(first);assert.ok(first.textWidthPt<370);
+  assert.equal(first.textOffsetXPt>0,offsetExpected);
+  const full=lines.find((x,i)=>i>imageIndex&&x.kind==='body'&&x.textWidthPt===370);
+  assert.ok(full,'text should return to full column width once it passes the image');
+ }
+});

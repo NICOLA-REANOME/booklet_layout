@@ -97,3 +97,34 @@ test('cover artwork and removal refresh both open production wrap and marketing 
  assert.match(app,/renderCoverSpread\(\);\}void drawMarketingPoster\(\)/);
  assert.match(app,/exportCoverSVG2/);
 });
+
+
+test('PDF export embeds the valid Times Roman bold standard font and offers a fallback download link',()=>{
+ assert.match(app,/StandardFonts\.TimesRomanBold/);
+ assert.doesNotMatch(app,/StandardFonts\.TimesBold/);
+ assert.match(app,/downloadFallbackLink/);
+ assert.match(app,/function readerPDFRasterized/);
+});
+test('Urdu PDF path loads Lateef and preserves mixed text direction for page rendering',()=>{
+ assert.match(html,/font-family:Lateef/);
+ assert.match(html,/url\("\/api\/font\?weight=400"\)/);
+ assert.match(app,/ensureLateefFonts/);
+ assert.match(app,/containsUrduScript\(\$\('manuscript'\)\.value\)/);
+ assert.match(app,/ctx\.direction=dir/);
+ assert.match(app,/rasterDpi/);
+});
+test('Heading 1–3 quick tags and image wrapping/drop plus grayscale workflow are available',()=>{
+ for(const [id,value] of [['textStyle','h1'],['imageFlow','wrap-left'],['imageMode','bw']])assert.ok(html.includes('id="'+id+'"')&&html.includes('value="'+value+'"'),id+' control missing');
+ assert.match(app,/Heading '\+level\+' tagged/);
+ assert.match(app,/addImageDropTarget/);
+ assert.match(app,/flow:im\.flow/);
+ assert.match(app,/function grayscaleCanvas/);
+ assert.match(app,/imageMode==='bw'/);
+ assert.match(app,/w:bidi/);
+ assert.match(app,/w:rtl/);
+});
+test('Lateef Urdu fonts are proxied through a same-origin endpoint with an OFL license file',()=>{
+ assert.ok(existsSync(new URL('../api/font.mjs',import.meta.url)));
+ assert.ok(existsSync(new URL('../assets/fonts/OFL-Lateef.txt',import.meta.url)));
+ assert.match(html,/\/api\/font\?weight=700/);
+});
