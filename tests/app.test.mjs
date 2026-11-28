@@ -155,3 +155,11 @@ test('DOCX export uses floating Word image anchors when text wrapping is selecte
  assert.match(app,/flow==='wrap-left'/);
  assert.match(app,/flow==='wrap-right'/);
 });
+
+
+test('mixed Urdu DOCX paragraphs keep Urdu runs RTL and English/numeric runs LTR',()=>{
+ assert.match(app,/const pushText=segment=>/);
+ assert.match(app,/direction==='rtl'/);
+ assert.match(app,/Times New Roman" w:hAnsi="Times New Roman" w:cs="Lateef"/);
+ assert.match(app,/Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/);
+});
